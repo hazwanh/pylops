@@ -30,8 +30,9 @@ from pylops.waveeqprocessing.lsm_edit import _traveltime_table, Demigration, LSM
 from pylops.optimization.leastsquares  import *
 from pylops.optimization.sparsity  import *
 #%% Generate the marmousi model and display
+
 #Velocity
-inputfile='poststack_model.npz'
+inputfile='data/avo/poststack_model.npz'
 
 model = np.load(inputfile)
 x, z, vel_true = model['x'] - model['x'][0], model['z'] - model['z'][0], 1000*model['model'].T
@@ -43,6 +44,7 @@ refl = np.diff(vel_true, axis=1)
 refl = np.hstack([refl, np.zeros((nx, 1))])
 
 # Smooth velocity
+v0 = 1600 # initial velocity
 nsmooth=100
 vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel_true, axis=0)
 vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel, axis=1)
@@ -61,8 +63,10 @@ sz = 10*np.ones(ns)
 sources = np.vstack((sx, sz))
 ds = sources[0,1]-sources[0,0]
 
+#%% Display the figure
+
 plt.figure(figsize=(10,5))
-im = plt.imshow(vel_true.T, cmap='gray', extent = (x[0], x[-1], z[-1], z[0]))
+im = plt.imshow(vel_true.T, cmap='jet', extent = (x[0], x[-1], z[-1], z[0]))
 plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
 plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
 plt.colorbar(im)
@@ -72,7 +76,7 @@ plt.title('Velocity')
 plt.ylim(z[-1], z[0])
 
 plt.figure(figsize=(10,5))
-im = plt.imshow(vel.T, cmap='gray', extent = (x[0], x[-1], z[-1], z[0]))
+im = plt.imshow(vel.T, cmap='jet', extent = (x[0], x[-1], z[-1], z[0]))
 plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
 plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
 plt.colorbar(im)
@@ -90,7 +94,7 @@ plt.axis('tight')
 plt.xlabel('x [m]'),plt.ylabel('y [m]')
 plt.title('Reflectivity')
 plt.ylim(z[-1], z[0]);
-#%% Computes travel time
+#%% Computes the travel time using eikonal
 trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vel, mode='eikonal')   
 
 fig, axs = plt.subplots(1, 3, figsize=(14, 3))
@@ -123,11 +127,12 @@ axs[2].set_title('Src+rec traveltime')
 axs[2].set_ylim(z[-1], z[0])
 plt.colorbar(im, ax=axs[2]);
 
-#%% Create data and invert model
+#%% Perform LS on velocity model
 nt = 751
 dt = 0.004
 t = np.arange(nt)*dt
 
+# Generate the ricker wavelet
 itrav = (np.floor(trav/dt)).astype(np.int32)
 travd = (trav/dt - itrav)
 itrav = itrav.reshape(nx, nz, ns*nr)
@@ -151,38 +156,69 @@ madj = madj.reshape(nx, nz)
 minv = LSMop.div(d.ravel(), niter=100)
 minv = minv.reshape(nx, nz)
 
-# demigration
+#%% demigration
 dadj = LSMop * madj.ravel()
 dadj = dadj.reshape(ns, nr, nt)
 
 dinv = LSMop * minv.ravel()
 dinv = dinv.reshape(ns, nr, nt)
-#%% Create data and invert model (FISTA)
+
+#%% Display the velocity results
+fig, axs = plt.subplots(2, 2, figsize=(15, 10))
+axs[0][0].imshow(vel.T, cmap='rainbow', vmin=v0, vmax=vel.max())
+axs[0][0].axis('tight')
+axs[0][0].set_title(r'$m$')
+axs[0][1].imshow(vel.T, cmap='rainbow', vmin=v0, vmax=vel.max())
+axs[0][1].set_title(r'$m_{back}$')
+axs[0][1].axis('tight')
+axs[1][0].imshow(madj.T, cmap='gray')
+axs[1][0].axis('tight')
+axs[1][0].set_title(r'$m_{adj}$');
+axs[1][1].imshow(minv.T, cmap='rainbow', vmin=v0, vmax=vel.max())
+axs[1][1].axis('tight')
+axs[1][1].set_title(r'$m_{inv}$');
+
+#%% Perform LS on reflectivity model
 lsm = LSM(z, x, t, sources, recs, vel, wav, wavc,
           mode='eikonal')
 d = lsm.Demop * refl.ravel()
 d = d.reshape(ns, nr, nt)
 
+# Adjoint
 madj = lsm.Demop.H * d.ravel()
 madj = madj.reshape(nx, nz)
 
+# LS solution
 minv = lsm.solve(d.ravel(), solver=lsqr, **dict(iter_lim=100, show=True))
 minv = minv.reshape(nx, nz)
 
+# LS solution with sparse model
 minv_sparse = lsm.solve(d.ravel(), solver=FISTA, **dict(eps=1e4, niter=100, show=True))
 minv_sparse = minv_sparse.reshape(nx, nz)
 
-# demigration
+# SPGL-1
+minv_sgpl1 = lsm.solve(d.ravel(), solver=SPGL1, **dict(sigma=1e-5, iter_lim=100, verbosity=2))
+minv_sgpl1 = minv_sgpl1.reshape(nx, nz)
+
+#%% Demigration
+
+# adjoint
 dadj = LSMop * madj.ravel()
 dadj = dadj.reshape(ns, nr, nt)
 
+# LS solution
 dinv = LSMop * minv.ravel()
 dinv = dinv.reshape(ns, nr, nt)
 
+# LS solution with sparse model
 dinv_sparse = LSMop * minv_sparse.ravel()
 dinv_sparse = dinv_sparse.reshape(ns, nr, nt)
+
+# SPGL-1
+dinv_sgpl1 = LSMop * minv_sgpl1.ravel()
+dinv_sgpl1 = dinv_sgpl1.reshape(ns, nr, nt)
 #%% Display the data and model
-fig, axs = plt.subplots(2, 2, figsize=(15, 10))
+fig, axs = plt.subplots(2, 3, figsize=(15, 10))
 axs[0][0].imshow(refl.T, cmap='gray')
 axs[0][0].axis('tight')
 axs[0][0].set_title(r'$m$')
@@ -195,8 +231,11 @@ axs[1][0].set_title(r'$m_{inv}$');
 axs[1][1].imshow(minv_sparse.T, cmap='gray')
 axs[1][1].axis('tight')
 axs[1][1].set_title(r'$m_{FISTA}$');
+axs[1][2].imshow(minv_sgpl1.T, cmap='gray')
+axs[1][2].axis('tight')
+axs[1][2].set_title(r'$m_{SPGL1}$');
 
-fig, axs = plt.subplots(1, 4, figsize=(10, 4))
+fig, axs = plt.subplots(1, 5, figsize=(10, 4))
 axs[0].imshow(d[ns//2, :, :500].T, cmap='gray')
 axs[0].set_title(r'$d$')
 axs[0].axis('tight')
@@ -205,12 +244,15 @@ axs[1].set_title(r'$d_{adj}$')
 axs[1].axis('tight')
 axs[2].imshow(dinv[ns//2, :, :500].T, cmap='gray')
 axs[2].set_title(r'$d_{inv}$')
-axs[2].axis('tight');
+axs[2].axis('tight')
 axs[3].imshow(dinv_sparse[ns//2, :, :500].T, cmap='gray')
 axs[3].set_title(r'$d_{fista}$')
-axs[3].axis('tight')
+axs[3].axis('tight');
+axs[4].imshow(dinv_sgpl1[ns//2, :, :500].T, cmap='gray')
+axs[4].set_title(r'$d_{SPGL1}$')
+axs[4].axis('tight');
 
-#%% Invert for the model itself
+#%% Invert for the velocity model itself
 trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vel, mode='eikonal')
 
 itrav = (np.floor(trav/dt)).astype(np.int32)
@@ -222,6 +264,7 @@ travd = travd.reshape(nx, nz, ns*nr)
 Sop = Spread(dims=(nx, nz), dimsd=(ns*nr, nt), table=itrav, dtable=travd, engine='numba')
 dottest(Sop, ns*nr*nt, nx*nz, verb=True)
 
+# generate the ricker wavelet
 wav, wavt, wavc = ricker(t[:41], f0=20)
 Cop = Convolve1D(ns*nr*nt, h=wav, offset=wavc, dims=(ns*nr, nt), dir=1)
 Dop = FirstDerivative(nx*nz, dims=(nx, nz), dir=1)
