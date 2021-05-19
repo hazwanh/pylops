@@ -69,7 +69,7 @@ ds = sources[0,1]-sources[0,0]
 #%% Display the velocity and reflectivity model
 
 plt.figure(figsize=(10,5))
-im = plt.imshow(vel.T, cmap='gray', extent = (x[0], x[-1], z[-1], z[0]))
+im = plt.imshow(vel.T, cmap='jet', extent = (x[0], x[-1], z[-1], z[0]))
 plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
 plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
 plt.colorbar(im)

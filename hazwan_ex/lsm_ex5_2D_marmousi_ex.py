@@ -66,7 +66,7 @@ ds = sources[0,1]-sources[0,0]
 #%% Display the figure
 
 plt.figure(figsize=(10,5))
-im = plt.imshow(vel_true.T, cmap='jet', extent = (x[0], x[-1], z[-1], z[0]))
+im = plt.imshow(vel_true.T, cmap='rainbow', extent = (x[0], x[-1], z[-1], z[0]))
 plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
 plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
 plt.colorbar(im)
@@ -106,6 +106,7 @@ axs[0].set_xlabel('x [m]')
 axs[0].set_ylabel('y [m]')
 axs[0].set_title('Source traveltime')
 axs[0].set_ylim(z[-1], z[0])
+
 plt.colorbar(im, ax=axs[0])
 im = axs[1].imshow(trav_recs[:, nr//4].reshape((nx, nz)).T, cmap='rainbow', 
                    extent = (x[0], x[-1], z[-1], z[0]))
@@ -115,6 +116,7 @@ axs[1].set_xlabel('x [m]')
 axs[1].set_ylabel('y [m]')
 axs[1].set_title('Receiver traveltime')
 axs[1].set_ylim(z[-1], z[0])
+
 plt.colorbar(im, ax=axs[1])
 im = axs[2].imshow(trav[:, ns//2*nr+nr//4].reshape((nx, nz)).T, cmap='rainbow', 
                    extent = (x[0], x[-1], z[-1], z[0]))
@@ -163,21 +165,6 @@ dadj = dadj.reshape(ns, nr, nt)
 dinv = LSMop * minv.ravel()
 dinv = dinv.reshape(ns, nr, nt)
 
-#%% Display the velocity results
-fig, axs = plt.subplots(2, 2, figsize=(15, 10))
-axs[0][0].imshow(vel.T, cmap='rainbow', vmin=v0, vmax=vel.max())
-axs[0][0].axis('tight')
-axs[0][0].set_title(r'$m$')
-axs[0][1].imshow(vel.T, cmap='rainbow', vmin=v0, vmax=vel.max())
-axs[0][1].set_title(r'$m_{back}$')
-axs[0][1].axis('tight')
-axs[1][0].imshow(madj.T, cmap='gray')
-axs[1][0].axis('tight')
-axs[1][0].set_title(r'$m_{adj}$');
-axs[1][1].imshow(minv.T, cmap='rainbow', vmin=v0, vmax=vel.max())
-axs[1][1].axis('tight')
-axs[1][1].set_title(r'$m_{inv}$');
-
 #%% Perform LS on reflectivity model
 lsm = LSM(z, x, t, sources, recs, vel, wav, wavc,
           mode='eikonal')
@@ -217,6 +204,55 @@ dinv_sparse = dinv_sparse.reshape(ns, nr, nt)
 # SPGL-1
 dinv_sgpl1 = LSMop * minv_sgpl1.ravel()
 dinv_sgpl1 = dinv_sgpl1.reshape(ns, nr, nt)
+
+#%%
+plt.figure(figsize=(10,5))
+im = plt.imshow(madj.T, cmap='gray')
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('x [m]'),plt.ylabel('y [m]')
+plt.title(r'$m_{adj}$')
+
+plt.figure(figsize=(10,5))
+im = plt.imshow(minv.T, cmap='gray')
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('x [m]'),plt.ylabel('y [m]')
+plt.title(r'$m_{inv}$')
+
+plt.figure(figsize=(10,5))
+im = plt.imshow(minv_sparse.T, cmap='gray')
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('x [m]'),plt.ylabel('y [m]')
+plt.title(r'$m_{FISTA}$')
+
+###############################################
+
+fig, axs = plt.subplots(1, 3, figsize=(10, 6))
+axs[0].imshow(d[ns//2, :, :500].T, cmap='gray')
+axs[0].set_title(r'$d$')
+axs[0].axis('tight')
+axs[1].imshow(dadj[ns//2, :, :500].T, cmap='gray')
+axs[1].set_title(r'$d_{adj}$')
+axs[1].axis('tight')
+axs[2].imshow(dinv[ns//2, :, :500].T, cmap='gray')
+axs[2].set_title(r'$d_{inv}$')
+axs[2].axis('tight')
+
+fig, axs = plt.subplots(1, 3, figsize=(10, 6))
+axs[0].imshow(d[ns//2, :, :500].T, cmap='gray',
+              vmin=-0.5*d.max(), vmax=0.5*d.max())
+axs[0].set_title(r'$d$')
+axs[0].axis('tight')
+axs[1].imshow(dadj[ns//2, :, :500].T, cmap='gray',
+              vmin=-0.1*dadj.max(), vmax=0.1*dadj.max())
+axs[1].set_title(r'$d_{adj}$')
+axs[1].axis('tight')
+axs[2].imshow(dinv[ns//2, :, :500].T, cmap='gray',
+              vmin=-0.5*d.max(), vmax=0.5*d.max())
+axs[2].set_title(r'$d_{inv}$')
+axs[2].axis('tight');
 #%% Display the data and model
 fig, axs = plt.subplots(2, 3, figsize=(15, 10))
 axs[0][0].imshow(refl.T, cmap='gray')
