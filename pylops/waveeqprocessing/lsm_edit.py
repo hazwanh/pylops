@@ -363,3 +363,28 @@ class LSM():
             minv = minv.reshape(len(self.y), len(self.x), len(self.z))
 
         return minv
+
+def zero_offset(data):
+    """
+    Create a zero-offset image of the data if the data have the same source 
+    and receiver location
+
+    Parameters
+    ----------
+    data: the source and receiver must have the same location
+
+    Returns
+    -------
+    zo : zero-offset image of the data
+
+    """
+    
+    nt = data.shape[2]
+    nx = data.shape[1]
+    
+    zo = np.zeros([nx,nt])
+    
+    for i in range(nx):
+        zo[i,:] = data[i,i,:]
+        
+    return zo 
