@@ -34,7 +34,7 @@ from pylops.waveeqprocessing.mdd       import *
 from pylops.optimization.leastsquares  import *
 from pylops.optimization.sparsity  import *
 
-#%%
+#%% Create the velocity and reflectivity
 # Velocity Model
 nx, nz = 301, 100
 dx, dz = 4, 4
@@ -65,7 +65,7 @@ sz = 20*np.ones(ns)
 sources = np.vstack((sx, sz))
 ds = sources[0,1]-sources[0,0]
 
-#%%
+#%% Display the reflectivity and velocity model
 plt.figure(figsize=(10,5))
 im = plt.imshow(vel.T, cmap='rainbow', extent = (x[0], x[-1], z[-1], z[0]))
 plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
@@ -86,7 +86,7 @@ plt.xlabel('x [m]'),plt.ylabel('y [m]')
 plt.title('Reflectivity')
 plt.xlim(x[0], x[-1]);
 
-#%%
+#%% Calculate the travel time
 trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vel, mode='eikonal')
 
 #%%

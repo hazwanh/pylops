@@ -121,6 +121,7 @@ dmig1 = dmig1.reshape(ns, nr, nt)
 mig2 = lsm.Demop.H * dmig1.ravel()
 mig2 = mig2.reshape(nx, nz)
 
+#%% Apply deblurring
 """
 Cop = pylops.signalprocessing.Convolve2D(Nz * Nx, h=h,
                                          offset=(nh[0] // 2,
@@ -134,7 +135,23 @@ imdeblurfista = \
                                        niter=100)[0]
 imdeblurfista = Wop.H * imdeblurfista
 """
+# Get the size
+Nz, Nx = mig1.shape
 
+# Apply deblurring using least-square method
+imdeblur = NormalEquationsInversion(lsm.Demop.H,None,mig1,maxiter=50)
+
+# Create the 2D Transform wavelet operator
+Wop = DWT2D((Nz, Nx), wavelet='haar', level=3)
+
+# Apply deblurring using FISTA
+imdeblurfista = FISTA(lsm.Demop * Wop.H, mig1, eps=1e-1,
+                                       niter=100)[0]
+# testing
+imdeblurfista = FISTA(lsm.Demop * Wop.H, dmig1.ravel(), eps=1e-1,
+                                       niter=100)[0]
+imdeblurfista = Wop.H * imdeblurfista
+imdeblurfista = imdeblurfista.reshape(nx, nz)
 
 #%% Display
 
