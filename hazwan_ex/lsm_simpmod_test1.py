@@ -89,6 +89,59 @@ plt.xlim(x[0], x[-1]);
 #%% Calculate the travel time
 trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vel, mode='eikonal')
 
+#%%
+plt.figure(figsize=(10,5))
+im = plt.imshow(trav.T, cmap='jet')
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('x [m]'),plt.ylabel('y [m]')
+plt.title('Total traveltime')
+
+plt.figure(figsize=(10,5))
+im = plt.imshow(trav_srcs.T, cmap='jet')
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('x [m]'),plt.ylabel('y [m]')
+plt.title('Source-to-subsurface traveltime')
+
+plt.figure(figsize=(10,5))
+im = plt.imshow(trav_recs.T, cmap='jet')
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('x [m]'),plt.ylabel('y [m]')
+plt.title('Receiver-to-subsurface traveltime')
+
+"""
+# Perform LS on velocity model
+
+Sop = Spread(dims=(nx, nz), dimsd=(ns*nr, nt), table=itrav, dtable=travd, engine='numba')
+dottest(Sop, ns*nr*nt, nx*nz)
+
+wav, wavt, wavc = ricker(t[:41], f0=20)
+Cop = Convolve1D(ns*nr*nt, h=wav, offset=wavc, dims=(ns*nr, nt), dir=1)
+
+LSMop = Cop*Sop
+LSMop = LinearOperator(LSMop, explicit=False)
+
+# create the data
+d2 = LSMop * refl.ravel()
+d2 = d2.reshape(ns, nr, nt)
+
+# migration
+mig1_2 = LSMop.H * d2.ravel()
+mig1_2 = mig1_2.reshape(nx, nz)
+
+minv_2 = LSMop.div(d2.ravel(), niter=100)
+minv_2 = minv_2.reshape(nx, nz)
+
+# demigration
+dadj = LSMop * madj.ravel()
+dadj = dadj.reshape(ns, nr, nt)
+
+dinv = LSMop * minv.ravel()
+dinv = dinv.reshape(ns, nr, nt)
+"""
+
 #%% Create the wavelet
 nt = 651
 dt = 0.004
@@ -101,6 +154,7 @@ itrav = itrav.reshape(nx, nz, ns*nr)
 travd = travd.reshape(nx, nz, ns*nr)
 
 #%% Create the operator
+
 # create the lsm operator
 lsm = LSM(z, x, t, sources, recs, v0, wav, wavc,
           mode='analytic')

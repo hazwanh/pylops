@@ -168,6 +168,8 @@ dinv = dinv.reshape(ns, nr, nt)
 #%% Perform LS on reflectivity model
 lsm = LSM(z, x, t, sources, recs, vel, wav, wavc,
           mode='eikonal')
+
+# create the data, d:
 d = lsm.Demop * refl.ravel()
 d = d.reshape(ns, nr, nt)
 
