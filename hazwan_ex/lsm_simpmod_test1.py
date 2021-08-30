@@ -111,6 +111,17 @@ plt.axis('tight')
 plt.xlabel('x [m]'),plt.ylabel('y [m]')
 plt.title('Receiver-to-subsurface traveltime')
 
+#%% Create the wavelet
+nt = 651
+dt = 0.004
+t = np.arange(nt)*dt
+wav, wavt, wavc = ricker(t[:41], f0=20)
+
+itrav = (np.floor(trav/dt)).astype(np.int32)
+travd = (trav/dt - itrav)
+itrav = itrav.reshape(nx, nz, ns*nr)
+travd = travd.reshape(nx, nz, ns*nr)
+
 """
 # Perform LS on velocity model
 
@@ -124,34 +135,31 @@ LSMop = Cop*Sop
 LSMop = LinearOperator(LSMop, explicit=False)
 
 # create the data
-d2 = LSMop * refl.ravel()
-d2 = d2.reshape(ns, nr, nt)
+d_vel = LSMop * refl.ravel()
+d_vel = d_vel.reshape(ns, nr, nt)
 
 # migration
-mig1_2 = LSMop.H * d2.ravel()
-mig1_2 = mig1_2.reshape(nx, nz)
+mig_vel = LSMop.H * d_vel.ravel()
+mig_vel = mig_vel.reshape(nx, nz)
 
-minv_2 = LSMop.div(d2.ravel(), niter=100)
-minv_2 = minv_2.reshape(nx, nz)
+minv_vel = LSMop.div(d_vel.ravel(), niter=100)
+minv_vel = minv_vel.reshape(nx, nz)
 
 # demigration
-dadj = LSMop * madj.ravel()
-dadj = dadj.reshape(ns, nr, nt)
+dadj_vel = LSMop * mig_vel.ravel()
+dadj_vel = dadj_vel.reshape(ns, nr, nt)
 
-dinv = LSMop * minv.ravel()
-dinv = dinv.reshape(ns, nr, nt)
+dinv_vel = LSMop * minv_vel.ravel()
+dinv_vel = dinv_vel.reshape(ns, nr, nt)
 """
-
-#%% Create the wavelet
-nt = 651
-dt = 0.004
-t = np.arange(nt)*dt
-wav, wavt, wavc = ricker(t[:41], f0=20)
-
-itrav = (np.floor(trav/dt)).astype(np.int32)
-travd = (trav/dt - itrav)
-itrav = itrav.reshape(nx, nz, ns*nr)
-travd = travd.reshape(nx, nz, ns*nr)
+"""
+plt.figure(figsize=(10,5))
+im = plt.imshow(mig_vel.T, cmap='gray')
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('x [m]'),plt.ylabel('y [m]')
+plt.title('migrated velocity data, mig_vel')
+"""
 
 #%% Create the operator
 
