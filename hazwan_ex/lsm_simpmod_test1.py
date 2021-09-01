@@ -241,3 +241,67 @@ plt.axis('tight')
 plt.xlabel('x [m]'),plt.ylabel('y [m]')
 plt.title('migrated data, mig1')
 
+#%% invert for the model again (update velocity)
+
+trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vel, mode='eikonal')
+
+itrav = (np.floor(trav/dt)).astype(np.int32)
+travd = (trav/dt - itrav)
+itrav = itrav.reshape(nx, nz, ns*nr)
+travd = travd.reshape(nx, nz, ns*nr)
+
+# Modelling
+Sop = Spread(dims=(nx, nz), dimsd=(ns*nr, nt), table=itrav, dtable=travd, engine='numba')
+dottest(Sop, ns*nr*nt, nx*nz, verb=True)
+
+wav, wavt, wavc = ricker(t[:41], f0=20)
+Cop = Convolve1D(ns*nr*nt, h=wav, offset=wavc, dims=(ns*nr, nt), dir=1)
+Dop = FirstDerivative(nx*nz, dims=(nx, nz), dir=1)
+LSMop = Cop*Sop*Dop
+LSMop = LinearOperator(LSMop, explicit=False)
+
+d_2 = LSMop * np.log(vel).ravel()
+d_2 = d_2.reshape(ns, nr, nt)
+dback = LSMop * np.log(vel).ravel()
+dback = dback.reshape(ns, nr, nt)
+
+madj_2 = (Cop*Sop).H * d_2.ravel()
+madj_2 = madj_2.reshape(nx, nz)
+
+# Regularized inversion
+Regop = SecondDerivative(nx*nz, (nx, nz), dir=0)
+minv_2 = RegularizedInversion(LSMop, [Regop], d_2.ravel(),
+                            x0=np.log(vel).ravel(),
+                            epsRs=[1e1], returninfo=False,
+                            **dict(iter_lim=200, show=True))
+minv_2 = np.exp(minv_2.reshape((nx, nz)))
+
+# demigration
+dadj_2 = (Cop*Sop) * madj_2.ravel()
+dadj_2 = dadj_2.reshape(ns, nr, nt)
+
+dinv_2 = LSMop *  np.log(minv_2).ravel()
+dinv_2 = dinv_2.reshape(ns, nr, nt)
+
+# velocity inverted data, minv_2:
+plt.figure(figsize=(10,5))
+im = plt.imshow(minv_2.T, cmap='gray')
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('x [m]'),plt.ylabel('y [m]')
+plt.title('inverted velocity data, minv_2')
+
+# migrated data, madj_2:
+plt.figure(figsize=(10,5))
+im = plt.imshow(madj_2.T, cmap='gray')
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('x [m]'),plt.ylabel('y [m]')
+plt.title('migrated data, madj_2')
+
+plt.figure(figsize=(10,5))
+im = plt.imshow(zero_offset(d_2).T, cmap='gray')
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('x [m]'),plt.ylabel('y [m]')
+plt.title('seismic data, d_2')
