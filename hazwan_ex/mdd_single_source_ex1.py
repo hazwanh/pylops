@@ -34,6 +34,20 @@ from pylops.optimization.leastsquares  import *
 
 #%% Part 1: Multi-dimensional Convolution (MDC)
 
+"""
+The so-called multi-dimensional convolution (MDC) is a chained operator. 
+It is composed of a forward Fourier transform a multi-dimensional integration
+and an inverse Fourier transform
+
+This operation can be discretized and performed by means of a linear operator
+
+D = F^{H}RF
+
+where:
+        F is the Fourier transform applied along the time axis 
+        R is multi-dimensional convolution kernel.
+"""
+
 # Set the input parameters
 par = {'ox':0,'dx':2,    'nx':60,
        'oy':0,'dy':2,    'ny':100,
@@ -59,7 +73,7 @@ t,t2,x,y = makeaxis(par)
 wav = ricker(t[:41], f0=par['f0'])[0]
 
 # Generate model
-m, mwav =  linear2d(x,t,v,t0_m,theta_m,amp_m,wav)
+m, mwav =  linear2d(x,t,v,t0_m,theta_m,amp_m,wav) # True refl
 
 # Generate operator
 G,Gwav = linear3d(x,y,t,v,t0_G,theta_G,phi_G,amp_G,wav)
@@ -82,57 +96,97 @@ dottest(MDCop1, MDCop1.shape[0], MDCop1.shape[1], complexflag=3, verb=True);
 # Create data
 d1 = MDCop1*m.T.flatten()
 
-d1 = d1.reshape(2*par['nt']-1, par['ny'])
+d1 = d1.reshape(2*par['nt']-1, par['ny']) # the synthetic data?
 
+# Plotting
+
+# Display the true model
 plt.figure()
-plt.imshow(d1, vmin=-20, vmax=20, cmap='gray')
-plt.title('d with new MDC')
-plt.axis('tight')
-
-plt.figure()
-plt.plot(d1[:, par['nx']//2], '--r')
-plt.xlim(400, 500);
-
-#%%
-madj = MDCop1.H*d1.flatten()
-minv, istop, itn, r1norm, r2norm = lsqr(MDCop1, d1.flatten(), damp=1e-10, iter_lim=10, show=1)[0:5]
-
-madj = madj.reshape(2*par['nt']-1, par['nx'])
-minv = minv.reshape(2*par['nt']-1, par['nx'])
-
-#%% Plotting
-plt.figure()
-plt.imshow(mwav.T,aspect='auto',interpolation='nearest', cmap='gray',
-           vmin=-mwav.max(), vmax=mwav.max(),
+plt.imshow(mwav.T,aspect='auto',interpolation='nearest', vmin=-2, vmax=2, cmap='gray',
            extent=(x.min(),x.max(),t2.max(),t2.min()))
-plt.title('m ', fontsize=15)
+plt.title('true m', fontsize=15)
+plt.xlabel('x')
+plt.ylabel('t')
+plt.tight_layout()
+
+# Display the generated d using mdc
+plt.figure()
+plt.imshow(d1,aspect='auto',interpolation='nearest', vmin=-20, vmax=20, cmap='gray',
+           extent=(x.min(),x.max(),t2.max(),t2.min()))
+plt.title('generated d through mdc', fontsize=15)
 plt.xlabel('x'),plt.ylabel('t')
 plt.tight_layout()
 
-fig = plt.figure(figsize=(15,6))
+# # Display the G (inline and xline)
+# plt.figure()
+# plt.subplot(121)
+# plt.imshow(Gwav2[int(par['ny']/2)].T,aspect='auto',interpolation='nearest', vmin=-2, vmax=2, cmap='gray',
+#            extent=(x.min(),x.max(),t2.max(),t2.min()))
+# plt.title('G - inline view', fontsize=15)
+# plt.xlabel('x'),plt.ylabel('t')
+
+# plt.subplot(122)
+# plt.imshow(Gwav2[:,int(par['nx']/2)].T,aspect='auto',interpolation='nearest', vmin=-2, vmax=2, cmap='gray',
+#            extent=(y.min(),y.max(),t2.max(),t2.min()))
+# plt.title('G - xline view', fontsize=15)
+# plt.xlabel('y'),plt.ylabel('t')
+# plt.tight_layout()
+#%% Part 2: Multi-dimensional Deconvolution
+
+# invert the MDC operator
+madj = MDCop1.H*d1.flatten()
+minv, istop, itn, r1norm, r2norm = lsqr(MDCop1, d1.flatten(), damp=1e-10, iter_lim=10, show=1)[0:5]
+
+madj = madj.reshape(2*par['nt']-1, par['nx']) # migrated equivalent?
+minv = minv.reshape(2*par['nt']-1, par['nx']) # inverted m?
+
+#%% Plotting
+
+# Display
+fig = plt.figure(figsize=(10,6))
 ax1 = plt.subplot2grid((1, 5), (0, 0), colspan=2)
 ax2 = plt.subplot2grid((1, 5), (0, 2), colspan=2)
-ax3 = plt.subplot2grid((1, 5), (0, 4))
+ax3 = plt.subplot2grid((1, 5), (0, 4), colspan=2)
 
-ax1.imshow(madj, aspect='auto',interpolation='nearest', cmap='gray', 
-           vmin=-madj.max(), vmax=madj.max(),
+# Display the true model
+ax1.imshow(mwav.T,aspect='auto',interpolation='nearest', cmap='gray',
+           vmin=-mwav.max(), vmax=mwav.max(),
            extent=(x.min(),x.max(),t2.max(),t2.min()))
-ax1.set_title('adjoint m', fontsize=15)
+ax1.set_title('true m', fontsize=15)
 ax1.set_xlabel('x'),ax1.set_ylabel('t')
 
-ax2.imshow(minv, aspect='auto', interpolation='nearest', cmap='gray',
-           vmin=-minv.max(), vmax=minv.max(),
+# Display the adjoint (migrated) m
+ax2.imshow(madj, aspect='auto',interpolation='nearest', cmap='gray', 
+           vmin=-madj.max(), vmax=madj.max(),
            extent=(x.min(),x.max(),t2.max(),t2.min()))
-ax2.set_title('inverted m', fontsize=15)
+ax2.set_title('adjoint m', fontsize=15)
 ax2.set_xlabel('x'),ax1.set_ylabel('t')
 
-ax3.plot(madj[:, int(par['nx']/2)]/np.abs(madj[:, int(par['nx']/2)]).max(), t2, 'r', lw=5)
-ax3.plot(minv[:, int(par['nx']/2)]/np.abs(minv[:, int(par['nx']/2)]).max(), t2, '--k', lw=3)
-ax3.set_ylim([t2[-1],t2[0]])
+# Display the inverted m
+ax3.imshow(minv, aspect='auto', interpolation='nearest', cmap='gray',
+           vmin=-minv.max(), vmax=minv.max(),
+           extent=(x.min(),x.max(),t2.max(),t2.min()))
+ax3.set_title('inverted m', fontsize=15)
+ax3.set_xlabel('x'),ax1.set_ylabel('t')
+
 fig.tight_layout()
+
+# ax3.plot(madj[:, int(par['nx']/2)]/np.abs(madj[:, int(par['nx']/2)]).max(), t2, 'r', lw=5)
+# ax3.plot(minv[:, int(par['nx']/2)]/np.abs(minv[:, int(par['nx']/2)]).max(), t2, '--k', lw=3)
+# ax3.set_ylim([t2[-1],t2[0]])
 
 #%% Preconditioned inversion
 
+"""
+We solve now the same problem with a preconditioning
+
+d=DPm
+
+where P is a masking operator that sets values in the negative part of the 
+time axis equal to zero. 
+This is added here as we know that our solution should be null in the negative 
+time axis and it can be used to speed up convergence.
+"""
 P = np.ones((par['nx'],par['nt']*2-1))
 P[:,:par['nt']-1]=0
 Pop = Diagonal(P)
@@ -143,29 +197,40 @@ minv_prec= PreconditionedInversion(MDCop1, Pop, d1.flatten(), returninfo=True,
 minv_prec = minv_prec.reshape(2*par['nt']-1, par['nx'])
 
 # Plotting
-fig = plt.figure(figsize=(15,6))
+
+fig = plt.figure(figsize=(10,6))
 ax1 = plt.subplot2grid((1, 5), (0, 0), colspan=2)
 ax2 = plt.subplot2grid((1, 5), (0, 2), colspan=2)
-ax3 = plt.subplot2grid((1, 5), (0, 4))
+ax3 = plt.subplot2grid((1, 5), (0, 4), colspan=2)
 
-ax1.imshow(madj, aspect='auto',interpolation='nearest', cmap='gray',
-           vmin=-madj.max(), vmax=madj.max(),
+# Display the true model
+ax1.imshow(mwav.T,aspect='auto',interpolation='nearest', cmap='gray',
+           vmin=-mwav.max(), vmax=mwav.max(),
            extent=(x.min(),x.max(),t2.max(),t2.min()))
-ax1.set_title('adjoint m', fontsize=15)
+ax1.set_title('true m', fontsize=15)
 ax1.set_xlabel('x'),ax1.set_ylabel('t')
 
-ax2.imshow(minv_prec,aspect='auto',interpolation='nearest', cmap='gray',
-           vmin=-minv_prec.max(), vmax=minv_prec.max(),
+# Display the adjoint (migrated) m
+ax2.imshow(madj, aspect='auto',interpolation='nearest', cmap='gray', 
+           vmin=-madj.max(), vmax=madj.max(),
            extent=(x.min(),x.max(),t2.max(),t2.min()))
-ax2.set_title('preconditioned inverted m', fontsize=15)
+ax2.set_title('adjoint m', fontsize=15)
 ax2.set_xlabel('x'),ax1.set_ylabel('t')
 
-ax3.plot(madj[:, int(par['nx']/2)]/np.abs(madj[:, int(par['nx']/2)]).max(), t2, 'r', lw=5, label='Adj')
-ax3.plot(minv[:, int(par['nx']/2)]/np.abs(minv[:, int(par['nx']/2)]).max(), t2, '--g', lw=3, label='Inv')
-ax3.plot(minv_prec[:, int(par['nx']/2)]/np.abs(minv_prec[:, int(par['nx']/2)]).max(), t2, '--k', lw=3, label='Inv prec')
-ax3.set_ylim([t2[-1],t2[0]])
-ax3.legend()
+# Display the inverted m
+ax3.imshow(minv_prec,aspect='auto',interpolation='nearest', cmap='gray',
+           vmin=-minv_prec.max(), vmax=minv_prec.max(),
+           extent=(x.min(),x.max(),t2.max(),t2.min()))
+ax3.set_title('preconditioned inverted m', fontsize=15)
+ax3.set_xlabel('x'),ax1.set_ylabel('t')
+
 fig.tight_layout()
+
+# ax3.plot(madj[:, int(par['nx']/2)]/np.abs(madj[:, int(par['nx']/2)]).max(), t2, 'r', lw=5, label='Adj')
+# ax3.plot(minv[:, int(par['nx']/2)]/np.abs(minv[:, int(par['nx']/2)]).max(), t2, '--g', lw=3, label='Inv')
+# ax3.plot(minv_prec[:, int(par['nx']/2)]/np.abs(minv_prec[:, int(par['nx']/2)]).max(), t2, '--k', lw=3, label='Inv prec')
+# ax3.set_ylim([t2[-1],t2[0]])
+# ax3.legend()
 
 #%% High level MDD routine
 
