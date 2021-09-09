@@ -252,178 +252,65 @@ fig.tight_layout()
 
 #%% High level MDD routine
 
-minv_hl,madj_hl,psfinv_hl,psfadj_hl = MDD(Gwav, d[:,par['nt']-1:], 
-                              dt=par['dt'], dr=par['dx'], nfmax=799, twosided=True, 
-                              adjoint=True, psf=True, dtype='complex64', dottest=True,
-                              **dict(damp=1e-10, iter_lim=50, show=1))
-# Plotting
-plt.figure()
-plt.imshow(mwav.T, aspect='auto',interpolation='nearest', cmap='gray',
-           vmin=-mwav.max(), vmax=mwav.max(),
-           extent=(x.min(),x.max(),t2.max(),t2.min()))
-plt.title('m ', fontsize=15)
-plt.xlabel('x'),plt.ylabel('t')
-plt.tight_layout()
-
-fig = plt.figure(figsize=(15,6))
-ax1 = plt.subplot2grid((1, 5), (0, 0), colspan=2)
-ax2 = plt.subplot2grid((1, 5), (0, 2), colspan=2)
-ax3 = plt.subplot2grid((1, 5), (0, 4))
-
-ax1.imshow(madj_hl.T,aspect='auto',interpolation='nearest', cmap='gray',
-           vmin=-madj_hl.max(), vmax=madj_hl.max(),
-           extent=(x.min(),x.max(),t2.max(),t2.min()))
-ax1.set_title('adjoint m', fontsize=15)
-ax1.set_xlabel('x'),ax1.set_ylabel('t')
-
-ax2.imshow(minv_hl.T,aspect='auto',interpolation='nearest', cmap='gray',
-           vmin=-minv_hl.max(), vmax=minv_hl.max(),
-           extent=(x.min(),x.max(),t2.max(),t2.min()))
-ax2.set_title('inverted m', fontsize=15)
-ax2.set_xlabel('x'),ax1.set_ylabel('t')
-
-ax3.plot(madj_hl[int(par['nx']/2)]/np.abs(madj_hl[int(par['nx']/2)]).max(), t2, 'r', lw=5)
-ax3.plot(minv_hl[int(par['nx']/2)]/np.abs(minv_hl[int(par['nx']/2)]).max(), t2, '--k', lw=3)
-ax3.set_ylim([t2[-1],t2[0]])
-fig.tight_layout()
-
-fig = plt.figure(figsize=(15,6))
-ax1 = plt.subplot2grid((1, 5), (0, 0), colspan=2)
-ax2 = plt.subplot2grid((1, 5), (0, 2), colspan=2)
-ax3 = plt.subplot2grid((1, 5), (0, 4))
-
-ax1.imshow(psfadj[int(par['ny']/2)].T,aspect='auto',interpolation='nearest', cmap='gray',
-           vmin=-psfadj.max(), vmax=psfadj.max(),
-           extent=(x.min(),x.max(),t2.max(),t2.min()))
-ax1.set_title('adjoint psf', fontsize=15)
-ax1.set_xlabel('x'),ax1.set_ylabel('t')
-
-ax2.imshow(psfinv[int(par['ny']/2)].T,aspect='auto',interpolation='nearest', cmap='gray',
-           vmin=-psfinv.max(), vmax=psfinv.max(),
-           extent=(x.min(),x.max(),t2.max(),t2.min()))
-ax2.set_title('inverted psf', fontsize=15)
-ax2.set_xlabel('x'),ax1.set_ylabel('t')
-
-ax3.plot(psfadj[int(par['ny']/2), int(par['nx']/2)]/np.abs(madj[int(par['nx']/2)]).max(), t2, 'r', lw=5)
-ax3.plot(psfinv[int(par['ny']/2), int(par['nx']/2)]/np.abs(minv[int(par['nx']/2)]).max(), t2, '--k', lw=3)
-ax3.set_ylim([t2[-1],t2[0]])
-fig.tight_layout()
-
-#%%
-minv,madj,psfinv,psfadj = MDD(Gwav2, d1.T, 
+minv_hl,madj_hl,psfinv_hl,psfadj_hl = MDD(Gwav2, d1.T, 
                               dt=par['dt'], dr=par['dx'], nfmax=799, twosided=True, add_negative=False,
                               adjoint=True, psf=True, dtype='complex64', dottest=True, 
                               **dict(damp=1e-10, iter_lim=20, show=1))
+# Display
+fig = plt.figure(figsize=(10,6))
+ax1 = plt.subplot2grid((1, 5), (0, 0), colspan=2)
+ax2 = plt.subplot2grid((1, 5), (0, 2), colspan=2)
+ax3 = plt.subplot2grid((1, 5), (0, 4), colspan=2)
 
-# Plotting
-plt.figure()
-plt.imshow(mwav.T, aspect='auto',interpolation='nearest', cmap='gray',
+# Display the true model
+ax1.imshow(mwav.T,aspect='auto',interpolation='nearest', cmap='gray',
            vmin=-mwav.max(), vmax=mwav.max(),
            extent=(x.min(),x.max(),t2.max(),t2.min()))
-plt.title('m ', fontsize=15)
-plt.xlabel('x'),plt.ylabel('t')
-plt.tight_layout()
-
-fig = plt.figure(figsize=(15,6))
-ax1 = plt.subplot2grid((1, 5), (0, 0), colspan=2)
-ax2 = plt.subplot2grid((1, 5), (0, 2), colspan=2)
-ax3 = plt.subplot2grid((1, 5), (0, 4))
-
-ax1.imshow(madj.T,aspect='auto',interpolation='nearest', cmap='gray',
-           vmin=-madj.max(), vmax=madj.max(),
-           extent=(x.min(),x.max(),t2.max(),t2.min()))
-ax1.set_title('adjoint m', fontsize=15)
+ax1.set_title('true m', fontsize=15)
 ax1.set_xlabel('x'),ax1.set_ylabel('t')
 
-ax2.imshow(minv.T,aspect='auto',interpolation='nearest', cmap='gray',
-           vmin=-minv.max(), vmax=minv.max(),
+# Display the adjoint (migrated) m
+ax2.imshow(madj_hl.T, aspect='auto',interpolation='nearest', cmap='gray', 
+           vmin=-madj_hl.max(), vmax=madj_hl.max(),
            extent=(x.min(),x.max(),t2.max(),t2.min()))
-ax2.set_title('inverted m', fontsize=15)
+ax2.set_title('adj m hl', fontsize=15)
 ax2.set_xlabel('x'),ax1.set_ylabel('t')
 
-ax3.plot(madj[int(par['nx']/2)]/np.abs(madj[int(par['nx']/2)]).max(), t2, 'r', lw=5)
-ax3.plot(minv[int(par['nx']/2)]/np.abs(minv[int(par['nx']/2)]).max(), t2, '--k', lw=3)
-ax3.set_ylim([t2[-1],t2[0]])
-fig.tight_layout()
-
-fig = plt.figure(figsize=(15,6))
-ax1 = plt.subplot2grid((1, 5), (0, 0), colspan=2)
-ax2 = plt.subplot2grid((1, 5), (0, 2), colspan=2)
-ax3 = plt.subplot2grid((1, 5), (0, 4))
-
-ax1.imshow(psfadj[int(par['ny']/2)].T,aspect='auto',interpolation='nearest', cmap='gray',
-           vmin=-psfadj.max(), vmax=psfadj.max(),
+# Display the inverted m
+ax3.imshow(minv_hl.T, aspect='auto', interpolation='nearest', cmap='gray',
+           vmin=-minv_hl.max(), vmax=minv_hl.max(),
            extent=(x.min(),x.max(),t2.max(),t2.min()))
-ax1.set_title('adjoint psf', fontsize=15)
-ax1.set_xlabel('x'),ax1.set_ylabel('t')
+ax3.set_title('inv m hl', fontsize=15)
+ax3.set_xlabel('x'),ax1.set_ylabel('t')
 
-ax2.imshow(psfinv[int(par['ny']/2)].T,aspect='auto',interpolation='nearest', cmap='gray',
-           vmin=-psfinv.max(), vmax=psfinv.max(),
-           extent=(x.min(),x.max(),t2.max(),t2.min()))
-ax2.set_title('inverted psf', fontsize=15)
-ax2.set_xlabel('x'),ax1.set_ylabel('t')
-
-ax3.plot(psfadj[int(par['ny']/2), int(par['nx']/2)]/np.abs(madj[int(par['nx']/2)]).max(), t2, 'r', lw=5)
-ax3.plot(psfinv[int(par['ny']/2), int(par['nx']/2)]/np.abs(minv[int(par['nx']/2)]).max(), t2, '--k', lw=3)
-ax3.set_ylim([t2[-1],t2[0]])
 fig.tight_layout()
 
 #%% For preconditioner
-minv,madj = MDD(Gwav2, d1.T, 
+minv_hl_prec,madj_hl_prec = MDD(Gwav2, d1.T, 
                 dt=par['dt'], dr=par['dx'], nfmax=799, twosided=True, add_negative=False,
                 causality_precond=True, adjoint=True, psf=False, 
                 dtype='complex64', dottest=True, 
                 **dict(damp=1e-10, iter_lim=10, show=1))
 
-# Plotting
-plt.figure()
-plt.imshow(mwav.T,aspect='auto',interpolation='nearest', cmap='gray',
+# Display the true model
+ax1.imshow(mwav.T,aspect='auto',interpolation='nearest', cmap='gray',
            vmin=-mwav.max(), vmax=mwav.max(),
            extent=(x.min(),x.max(),t2.max(),t2.min()))
-plt.title('m ', fontsize=15)
-plt.xlabel('x'),plt.ylabel('t')
-plt.tight_layout()
-
-fig = plt.figure(figsize=(15,6))
-ax1 = plt.subplot2grid((1, 5), (0, 0), colspan=2)
-ax2 = plt.subplot2grid((1, 5), (0, 2), colspan=2)
-ax3 = plt.subplot2grid((1, 5), (0, 4))
-
-ax1.imshow(madj.T,aspect='auto',interpolation='nearest', cmap='gray',
-           vmin=-madj.max(), vmax=madj.max(),
-           extent=(x.min(),x.max(),t2.max(),t2.min()))
-ax1.set_title('adjoint m', fontsize=15)
+ax1.set_title('true m', fontsize=15)
 ax1.set_xlabel('x'),ax1.set_ylabel('t')
 
-ax2.imshow(minv.T,aspect='auto',interpolation='nearest', cmap='gray',
-           vmin=-minv.max(), vmax=minv.max(),
+# Display the adjoint (migrated) m
+ax2.imshow(madj_hl_prec.T, aspect='auto',interpolation='nearest', cmap='gray', 
+           vmin=-madj_hl_prec.max(), vmax=madj_hl_prec.max(),
            extent=(x.min(),x.max(),t2.max(),t2.min()))
-ax2.set_title('inverted m', fontsize=15)
+ax2.set_title('adj m hl prec', fontsize=15)
 ax2.set_xlabel('x'),ax1.set_ylabel('t')
 
-ax3.plot(madj[int(par['nx']/2)]/np.abs(madj[int(par['nx']/2)]).max(), t2, 'r', lw=5)
-ax3.plot(minv[int(par['nx']/2)]/np.abs(minv[int(par['nx']/2)]).max(), t2, '--k', lw=3)
-ax3.set_ylim([t2[-1],t2[0]])
-fig.tight_layout()
-
-fig = plt.figure(figsize=(15,6))
-ax1 = plt.subplot2grid((1, 5), (0, 0), colspan=2)
-ax2 = plt.subplot2grid((1, 5), (0, 2), colspan=2)
-ax3 = plt.subplot2grid((1, 5), (0, 4))
-
-ax1.imshow(psfadj[int(par['ny']/2)].T,aspect='auto',interpolation='nearest', cmap='gray',
-           vmin=-psfadj.max(), vmax=psfadj.max(),
+# Display the inverted m
+ax3.imshow(minv_hl_prec.T, aspect='auto', interpolation='nearest', cmap='gray',
+           vmin=-minv_hl_prec.max(), vmax=minv_hl_prec.max(),
            extent=(x.min(),x.max(),t2.max(),t2.min()))
-ax1.set_title('adjoint psf', fontsize=15)
-ax1.set_xlabel('x'),ax1.set_ylabel('t')
+ax3.set_title('inv m hl prec', fontsize=15)
+ax3.set_xlabel('x'),ax1.set_ylabel('t')
 
-ax2.imshow(psfinv[int(par['ny']/2)].T,aspect='auto',interpolation='nearest', cmap='gray',
-           vmin=-psfinv.max(), vmax=psfinv.max(),
-           extent=(x.min(),x.max(),t2.max(),t2.min()))
-ax2.set_title('inverted psf', fontsize=15)
-ax2.set_xlabel('x'),ax1.set_ylabel('t')
-
-ax3.plot(psfadj[int(par['ny']/2), int(par['nx']/2)]/np.abs(madj[int(par['nx']/2)]).max(), t2, 'r', lw=5)
-ax3.plot(psfinv[int(par['ny']/2), int(par['nx']/2)]/np.abs(minv[int(par['nx']/2)]).max(), t2, '--k', lw=3)
-ax3.set_ylim([t2[-1],t2[0]])
 fig.tight_layout()
