@@ -32,21 +32,7 @@ from pylops.signalprocessing           import *
 from pylops.waveeqprocessing.mdd       import *
 from pylops.optimization.leastsquares  import *
 
-#%% Part 1: Multi-dimensional Convolution (MDC)
-
-"""
-The so-called multi-dimensional convolution (MDC) is a chained operator. 
-It is composed of a forward Fourier transform a multi-dimensional integration
-and an inverse Fourier transform
-
-This operation can be discretized and performed by means of a linear operator
-
-D = F^{H}RF
-
-where:
-        F is the Fourier transform applied along the time axis 
-        R is multi-dimensional convolution kernel.
-"""
+#%% Part 0: Create the wavelet, model and operator
 
 # Set the input parameters
 par = {'ox':0,'dx':2,    'nx':60,
@@ -83,7 +69,23 @@ m     = np.concatenate((np.zeros((par['nx'], par['nt']-1)), m), axis=-1)
 mwav  = np.concatenate((np.zeros((par['nx'], par['nt']-1)), mwav), axis=-1)
 Gwav2 = np.concatenate((np.zeros((par['ny'], par['nx'], par['nt']-1)), Gwav), axis=-1)
 
-#%% Part 1: create data using MDC
+#%% Part 1: Multi-dimensional Convolution
+
+"""
+The so-called multi-dimensional convolution (MDC) is a chained operator. 
+It is composed of a forward Fourier transform a multi-dimensional integration
+and an inverse Fourier transform
+
+This operation can be discretized and performed by means of a linear operator
+
+D = F^{H}RF
+
+where:
+        F is the Fourier transform applied along the time axis 
+        R is multi-dimensional convolution kernel.
+"""
+
+# Create data using MDC
 
 Gwav_fft = np.fft.rfft(Gwav2, 2*par['nt']-1, axis=-1)
 Gwav_fft = Gwav_fft[...,:par['nfmax']]
@@ -94,8 +96,10 @@ MDCop1=MDC(Gwav_fft.transpose(2,0,1), nt=2*par['nt']-1, nv=1, dt=par['dt'], dr=p
 dottest(MDCop1, MDCop1.shape[0], MDCop1.shape[1], complexflag=3, verb=True);
 
 # Create data
+d = MDCop1*m.flatten()
 d1 = MDCop1*m.T.flatten()
 
+d = d.reshape(par['ny'], 2*par['nt']-1)
 d1 = d1.reshape(2*par['nt']-1, par['ny']) # the synthetic data?
 
 # Plotting
@@ -132,6 +136,20 @@ plt.tight_layout()
 # plt.xlabel('y'),plt.ylabel('t')
 # plt.tight_layout()
 #%% Part 2: Multi-dimensional Deconvolution
+
+"""
+MDD is an ill-solved problem. It aims is to remove the effect of the 
+multidimensional convolution kernel or the so-called point-spread function 
+(PSF).
+
+It can be written as:
+    d = Dm
+    
+or equivalently, by means of its normal equation:
+    m = (D^{H}D)^{-1}D^{H}d
+
+where D^{H}D is generally referred to as blurring operator or PSF.
+"""
 
 # invert the MDC operator
 madj = MDCop1.H*d1.flatten()
@@ -221,7 +239,7 @@ ax2.set_xlabel('x'),ax1.set_ylabel('t')
 ax3.imshow(minv_prec,aspect='auto',interpolation='nearest', cmap='gray',
            vmin=-minv_prec.max(), vmax=minv_prec.max(),
            extent=(x.min(),x.max(),t2.max(),t2.min()))
-ax3.set_title('preconditioned inverted m', fontsize=15)
+ax3.set_title('precond inv m', fontsize=15)
 ax3.set_xlabel('x'),ax1.set_ylabel('t')
 
 fig.tight_layout()
@@ -234,11 +252,10 @@ fig.tight_layout()
 
 #%% High level MDD routine
 
-minv,madj,psfinv,psfadj = MDD(Gwav, d[:,par['nt']-1:], 
+minv_hl,madj_hl,psfinv_hl,psfadj_hl = MDD(Gwav, d[:,par['nt']-1:], 
                               dt=par['dt'], dr=par['dx'], nfmax=799, twosided=True, 
                               adjoint=True, psf=True, dtype='complex64', dottest=True,
                               **dict(damp=1e-10, iter_lim=50, show=1))
-
 # Plotting
 plt.figure()
 plt.imshow(mwav.T, aspect='auto',interpolation='nearest', cmap='gray',
@@ -253,20 +270,20 @@ ax1 = plt.subplot2grid((1, 5), (0, 0), colspan=2)
 ax2 = plt.subplot2grid((1, 5), (0, 2), colspan=2)
 ax3 = plt.subplot2grid((1, 5), (0, 4))
 
-ax1.imshow(madj.T,aspect='auto',interpolation='nearest', cmap='gray',
-           vmin=-madj.max(), vmax=madj.max(),
+ax1.imshow(madj_hl.T,aspect='auto',interpolation='nearest', cmap='gray',
+           vmin=-madj_hl.max(), vmax=madj_hl.max(),
            extent=(x.min(),x.max(),t2.max(),t2.min()))
 ax1.set_title('adjoint m', fontsize=15)
 ax1.set_xlabel('x'),ax1.set_ylabel('t')
 
-ax2.imshow(minv.T,aspect='auto',interpolation='nearest', cmap='gray',
-           vmin=-minv.max(), vmax=minv.max(),
+ax2.imshow(minv_hl.T,aspect='auto',interpolation='nearest', cmap='gray',
+           vmin=-minv_hl.max(), vmax=minv_hl.max(),
            extent=(x.min(),x.max(),t2.max(),t2.min()))
 ax2.set_title('inverted m', fontsize=15)
 ax2.set_xlabel('x'),ax1.set_ylabel('t')
 
-ax3.plot(madj[int(par['nx']/2)]/np.abs(madj[int(par['nx']/2)]).max(), t2, 'r', lw=5)
-ax3.plot(minv[int(par['nx']/2)]/np.abs(minv[int(par['nx']/2)]).max(), t2, '--k', lw=3)
+ax3.plot(madj_hl[int(par['nx']/2)]/np.abs(madj_hl[int(par['nx']/2)]).max(), t2, 'r', lw=5)
+ax3.plot(minv_hl[int(par['nx']/2)]/np.abs(minv_hl[int(par['nx']/2)]).max(), t2, '--k', lw=3)
 ax3.set_ylim([t2[-1],t2[0]])
 fig.tight_layout()
 
