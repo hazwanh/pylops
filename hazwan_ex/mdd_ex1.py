@@ -169,7 +169,7 @@ fig.tight_layout()
 
 #%% High level MDD routine
 
-minv,madj,psfinv,psfadj = MDD(Gwav, d[:,par['nt']-1:], 
+minv,madj,psfinv,psfadj = MDD(Gwav, d1[:,par['nt']-1:], 
                               dt=par['dt'], dr=par['dx'], nfmax=799, twosided=True, 
                               adjoint=True, psf=True, dtype='complex64', dottest=True,
                               **dict(damp=1e-10, iter_lim=50, show=1))
