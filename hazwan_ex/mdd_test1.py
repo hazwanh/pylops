@@ -22,6 +22,7 @@ def MDD(G, d, dt=0.004, dr=1., nfmax=None, wav=None,
 G = Gwav2           # shape:(100,60,799)
 d = d1.T            # shape:(100,799)
 dr = par['dx']      # dr = 2
+dt = par['dt']      # dt = 0.004
 nfmax = 799
 twosided=True
 add_negative=False
@@ -29,7 +30,11 @@ adjoint=True
 psf=True
 dtype='complex64'
 dottest=True
-**dict(damp=1e-10, iter_lim=20, show=1)
+saveGt=True
+causality_precond=False
+temp = "**dict(damp=1e-10, iter_lim=20, show=1)"
+# **dict(damp=1e-10, iter_lim=20, show=1)
+#%%
 
 ncp = get_array_module(d)
 
@@ -102,10 +107,13 @@ if twosided and causality_precond:                  # False
     P = to_cupy_conditional(d, P)
     Pop = Diagonal(P)
     minv = PreconditionedInversion(MDCop, Pop, d.flatten(),
-                                   returninfo=False, **kwargs_solver)
+                                   returninfo=False, **dict(damp=1e-10, iter_lim=20, show=1))
+    # minv = PreconditionedInversion(MDCop, Pop, d.flatten(),
+    #                                returninfo=False, **kwargs_solver)
 else:
     if ncp == np:                                               # True
-        minv = lsqr(MDCop, d.flatten(), **kwargs_solver)[0]     # (47940,)
+        minv = lsqr(MDCop, d.flatten(), **dict(damp=1e-10, iter_lim=20, show=1))[0]     # (47940,)
+        # minv = lsqr(MDCop, d.flatten(), **kwargs_solver)[0]
     else:
         minv = cgls(MDCop, d.flatten(), ncp.zeros(int(MDCop.shape[1]),
                                                   dtype=MDCop.dtype),
@@ -121,7 +129,8 @@ if wav is not None:
 
 if psf:
     if ncp == np:
-        psfinv = lsqr(PSFop, G.flatten(), **kwargs_solver)[0]   # (2876400,)
+        psfinv = lsqr(PSFop, G.flatten(), **dict(damp=1e-10, iter_lim=20, show=1))[0]   # (2876400,)
+        # psfinv = lsqr(PSFop, G.flatten(), **kwargs_solver)[0]   # (2876400,)
     else:
         psfinv = cgls(PSFop, G.flatten(), ncp.zeros(int(PSFop.shape[1]),
                                                     dtype=PSFop.dtype),

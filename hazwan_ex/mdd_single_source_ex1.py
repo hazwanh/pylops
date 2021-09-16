@@ -97,7 +97,6 @@ dottest(MDCop1, MDCop1.shape[0], MDCop1.shape[1], complexflag=3, verb=True);
 
 # Create data
 d1 = MDCop1*m.T.flatten()
-
 d1 = d1.reshape(2*par['nt']-1, par['ny']) # the synthetic data?
 
 # Plotting
