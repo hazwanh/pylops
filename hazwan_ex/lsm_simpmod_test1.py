@@ -175,13 +175,9 @@ d = d.reshape(ns, nr, nt)
 mig1 = lsm.Demop.H * d.ravel()
 mig1 = mig1.reshape(nx, nz)
 
-# b) demigrate mig1, to obtain data, dmig1:
-dmig1 = lsm.Demop * mig1.ravel()
-dmig1 = dmig1.reshape(ns, nr, nt)
-
-# c) re-migrate dmig1:
-mig2 = lsm.Demop.H * dmig1.ravel()
-mig2 = mig2.reshape(nx, nz)
+# default
+minv = lsm.solve(d.ravel(), solver=lsqr, **dict(iter_lim=10))
+minv = minv.reshape(nx, nz)
 
 #%% Apply deblurring
 """
@@ -200,20 +196,45 @@ imdeblurfista = Wop.H * imdeblurfista
 # Get the size
 Nz, Nx = mig1.shape
 
-# Apply deblurring using least-square method
-imdeblur = NormalEquationsInversion(lsm.Demop.H,None,mig1,maxiter=50)
+# using deblurr (NormalEquationInversion)
+minv_imdb = NormalEquationsInversion(lsm.Demop,None,d.ravel(),maxiter=10)
+minv_imdb = minv_imdb.reshape(nx, nz)
+
+# lsqr (similar to std lsm)
+minv_lsqr = lsqr(lsm.Demop, d.flatten(), damp=1e-10, iter_lim=10, show=1)[0]
+minv_lsqr = minv_lsqr.reshape(nx, nz)
+
+# using split-bergman
+Dop = [FirstDerivative(Nz * Nx, dims=(Nz, Nx), dir=0, edge=False),
+       FirstDerivative(Nz * Nx, dims=(Nz, Nx), dir=1, edge=False)]
+minv_sb = SplitBregman(lsm.Demop, Dop, d.flatten(), niter_outer=10, niter_inner=5,
+                       mu=1.5, epsRL1s=[1e0, 1e0],tol=1e-4, tau=1., show=False,
+                       ** dict(iter_lim=5, damp=1e-4))[0]
+minv_sb = minv_sb.reshape(nx, nz)
+
+# sb with fftconvolve
+ncp = get_array_module(d)
+wav1 = wav.copy()
+wav1 = wav1[ncp.newaxis]
+minv_hlsb = get_fftconvolve(d)(minv_sb.flatten(), wav1, mode='same')
+minv_hlsb = minv_hlsb.reshape(nx, nz)
 
 # Create the 2D Transform wavelet operator
 Wop = DWT2D((Nz, Nx), wavelet='haar', level=3)
+Dop = [FirstDerivative(Nz * Nx, dims=(Nz, Nx), dir=0, edge=False),
+       FirstDerivative(Nz * Nx, dims=(Nz, Nx), dir=1, edge=False)]
+DWop = Dop + [Wop, ]
 
 # Apply deblurring using FISTA
-imdeblurfista = FISTA(lsm.Demop * Wop.H, mig1, eps=1e-1,
-                                       niter=100)[0]
-# testing
-imdeblurfista = FISTA(lsm.Demop * Wop.H, dmig1.ravel(), eps=1e-1,
-                                       niter=100)[0]
-imdeblurfista = Wop.H * imdeblurfista
-imdeblurfista = imdeblurfista.reshape(nx, nz)
+minv_dbf = FISTA(lsm.Demop * Wop.H, d.flatten(), eps=1e-1, niter=10)[0]
+minv_dbf = Wop.H * minv_dbf
+minv_dbf = minv_dbf.reshape(nx, nz)
+
+# Apply deblurring using sb + haar
+minv_tv1 = SplitBregman(lsm.Demop, DWop,d.flatten(),niter_outer=10, niter_inner=5,
+                        mu=1.5, epsRL1s=[1e0, 1e0, 1e0], tol=1e-4, tau=1., show=False,
+                        ** dict(iter_lim=5, damp=1e-4))[0]
+minv_tv1 = minv_tv1.reshape(nx, nz)
 
 #%% Display
 
