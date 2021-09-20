@@ -161,6 +161,15 @@ madj = madj.reshape(nx, nz)
 minv = lsm.solve(d.ravel(), solver=lsqr, **dict(iter_lim=10, show=True))
 minv = minv.reshape(nx, nz)
 
+# create the LhL operator
+lsmhl_op = lsm.Demop.H*lsm.Demop
+madj2 = lhlop.H * madj.ravel()
+madj2 = madj2.reshape(nx, nz)
+
+# fista solution
+minv_sparse = lsm.solve(d.ravel(), solver=FISTA, **dict(eps=1e4, niter=100, show=True))
+minv_sparse = minv_sparse.reshape(nx, nz)
+
 # Get the size
 Nz, Nx = refl.shape
 
@@ -168,20 +177,20 @@ Nz, Nx = refl.shape
 minv_imdb = NormalEquationsInversion(lsm.Demop,None,d.ravel(),maxiter=10)
 minv_imdb = minv_imdb.reshape(nx, nz)
 
-# using split-bergman
+# using split-bregman
 Dop = [FirstDerivative(Nz * Nx, dims=(Nz, Nx), dir=0, edge=False),
        FirstDerivative(Nz * Nx, dims=(Nz, Nx), dir=1, edge=False)]
-minv_sb = SplitBregman(lsm.Demop, Dop, d.flatten(), niter_outer=10, niter_inner=5,
+minv_sb = SplitBregman(lsm.Demop, Dop, d.flatten(), niter_outer=5, niter_inner=3,
                        mu=1.5, epsRL1s=[1e0, 1e0],tol=1e-4, tau=1., show=False,
                        ** dict(iter_lim=5, damp=1e-4))[0]
 minv_sb = minv_sb.reshape(nx, nz)
 
-# sb with fftconvolve
-ncp = get_array_module(d)
-wav1 = wav.copy()
-wav1 = wav1[ncp.newaxis]
-minv_hlsb = get_fftconvolve(d)(minv_sb.flatten(), wav1, mode='same')
-minv_hlsb = minv_hlsb.reshape(nx, nz)
+# # sb with fftconvolve
+# ncp = get_array_module(d)
+# wav1 = wav.copy()
+# wav1 = wav1[ncp.newaxis]
+# minv_hlsb = get_fftconvolve(d)(minv_sb.flatten(), wav1, mode='same')
+# minv_hlsb = minv_hlsb.reshape(nx, nz)
 
 # Create the 2D Transform wavelet operator
 Wop = DWT2D((Nz, Nx), wavelet='haar', level=3)
@@ -193,6 +202,16 @@ DWop = Dop + [Wop, ]
 minv_dbf = FISTA(lsm.Demop * Wop.H, d.flatten(), eps=1e-1, niter=10)[0]
 minv_dbf = Wop.H * minv_dbf
 minv_dbf = minv_dbf.reshape(nx, nz)
+
+minv_imdb2 = NormalEquationsInversion(lsm.Demop * Wop.H,None,d.ravel(),maxiter=10)
+minv_imdb2 = Wop.H * minv_imdb2
+minv_imdb2= minv_imdb2.reshape(nx, nz)
+
+lsmhl_op = lsm.Demop.H*lsm.Demop
+minv_sb2 = SplitBregman(lsmhl_op, Dop, madj.flatten(), niter_outer=5, niter_inner=3,
+                       mu=1.5, epsRL1s=[1e0, 1e0],tol=1e-4, tau=1., show=False,
+                       ** dict(iter_lim=5, damp=1e-4))[0]
+minv_sb2 = minv_sb2.reshape(nx, nz)
 #%% Demigration
 
 # adjoint
