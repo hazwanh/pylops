@@ -167,23 +167,52 @@ madj2 = lhlop.H * madj.ravel()
 madj2 = madj2.reshape(nx, nz)
 
 # fista solution
-minv_sparse = lsm.solve(d.ravel(), solver=FISTA, **dict(eps=1e4, niter=100, show=True))
+minv_sparse = lsm.solve(d.ravel(), solver=FISTA, **dict(eps=1e4, niter=30, show=True))
 minv_sparse = minv_sparse.reshape(nx, nz)
 
-# Get the size
+# Create the 2D Transform wavelet operator
 Nz, Nx = refl.shape
+Wop = DWT2D((Nz, Nx), wavelet='haar', level=3)
+Dop = [FirstDerivative(Nz * Nx, dims=(Nz, Nx), dir=0, edge=False),
+       FirstDerivative(Nz * Nx, dims=(Nz, Nx), dir=1, edge=False)]
+DWop = Dop + [Wop, ]
 
-# using deblurr (NormalEquationInversion)
+# deblurring using NormalEquationInversion without regularization
 minv_imdb = NormalEquationsInversion(lsm.Demop,None,d.ravel(),maxiter=10)
 minv_imdb = minv_imdb.reshape(nx, nz)
 
-# using split-bregman
+minv_imdb_hl = NormalEquationsInversion(lsmhl_op,None,madj.ravel(),maxiter=10)
+minv_imdb_hl = minv_imdb_hl.reshape(nx, nz)
+
+minv_imdbr = NormalEquationsInversion(lsm.Demop,Dop,d.ravel(),maxiter=10)
+minv_imdbr = minv_imdbr.reshape(nx, nz) # no effect
+
+minv_imdbw = NormalEquationsInversion(lsm.Demop * Wop.H,None,d.ravel(),maxiter=10)
+minv_imdbw = Wop.H * minv_imdb2
+minv_imdbw= minv_imdbw.reshape(nx, nz) # no effect
+
+dinv_imdbhl = LSMop * minv_imdb_hl.ravel()
+dinv_imdbhl = dinv_imdbhl.reshape(ns, nr, nt)
+minv_imdbhlsqr = lsm.solve(dinv_imdbhl.ravel(), solver=FISTA, **dict(eps=1e4, niter=30, show=True))
+minv_imdbhlsqr = minv_imdbhlsqr.reshape(nx, nz)
+
+# deblurring using split-bregman
 Dop = [FirstDerivative(Nz * Nx, dims=(Nz, Nx), dir=0, edge=False),
        FirstDerivative(Nz * Nx, dims=(Nz, Nx), dir=1, edge=False)]
 minv_sb = SplitBregman(lsm.Demop, Dop, d.flatten(), niter_outer=5, niter_inner=3,
                        mu=1.5, epsRL1s=[1e0, 1e0],tol=1e-4, tau=1., show=False,
                        ** dict(iter_lim=5, damp=1e-4))[0]
 minv_sb = minv_sb.reshape(nx, nz)
+
+minv_sb_hl = SplitBregman(lsmhl_op, Dop, madj.flatten(), niter_outer=5, niter_inner=3,
+                       mu=1.5, epsRL1s=[1e0, 1e0],tol=1e-4, tau=1., show=False,
+                       ** dict(iter_lim=5, damp=1e-4))[0]
+minv_sb_hl = minv_sb_hl.reshape(nx, nz)
+
+dinv_sbhl = lsm.Demop * minv_sb_hl.ravel()
+dinv_sbhl = dinv_sbhl.reshape(ns, nr, nt)
+minv_sbhlsqr = lsm.solve(dinv_sbhl.ravel(), solver=FISTA, **dict(eps=1e4, niter=60, show=True))
+minv_sbhlsqr = minv_sbhlsqr.reshape(nx, nz)
 
 # # sb with fftconvolve
 # ncp = get_array_module(d)
@@ -192,26 +221,15 @@ minv_sb = minv_sb.reshape(nx, nz)
 # minv_hlsb = get_fftconvolve(d)(minv_sb.flatten(), wav1, mode='same')
 # minv_hlsb = minv_hlsb.reshape(nx, nz)
 
-# Create the 2D Transform wavelet operator
-Wop = DWT2D((Nz, Nx), wavelet='haar', level=3)
-Dop = [FirstDerivative(Nz * Nx, dims=(Nz, Nx), dir=0, edge=False),
-       FirstDerivative(Nz * Nx, dims=(Nz, Nx), dir=1, edge=False)]
-DWop = Dop + [Wop, ]
-
 # Apply deblurring using FISTA
 minv_dbf = FISTA(lsm.Demop * Wop.H, d.flatten(), eps=1e-1, niter=10)[0]
 minv_dbf = Wop.H * minv_dbf
 minv_dbf = minv_dbf.reshape(nx, nz)
 
-minv_imdb2 = NormalEquationsInversion(lsm.Demop * Wop.H,None,d.ravel(),maxiter=10)
-minv_imdb2 = Wop.H * minv_imdb2
-minv_imdb2= minv_imdb2.reshape(nx, nz)
+minv_dbf_hl = FISTA(lsmhl_op * Wop.H, madj.flatten(), eps=1e-1, niter=10)[0]
+minv_dbf_hl = Wop.H * minv_dbf_hl
+minv_dbf_hl = minv_dbf_hl.reshape(nx, nz)
 
-lsmhl_op = lsm.Demop.H*lsm.Demop
-minv_sb2 = SplitBregman(lsmhl_op, Dop, madj.flatten(), niter_outer=5, niter_inner=3,
-                       mu=1.5, epsRL1s=[1e0, 1e0],tol=1e-4, tau=1., show=False,
-                       ** dict(iter_lim=5, damp=1e-4))[0]
-minv_sb2 = minv_sb2.reshape(nx, nz)
 #%% Demigration
 
 # adjoint
@@ -236,7 +254,7 @@ plt.title('true refl')
 
 # madj
 plt.figure(figsize=(10,5))
-im = plt.imshow(madj.T, cmap='gray', vmin=rmin, vmax=rmax)
+im = plt.imshow(madj.T, cmap='gray')
 plt.colorbar(im)
 plt.axis('tight')
 plt.xlabel('x [m]'),plt.ylabel('y [m]')
