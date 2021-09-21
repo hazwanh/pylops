@@ -163,11 +163,14 @@ minv = minv.reshape(nx, nz)
 
 # create the LhL operator
 lsmhl_op = lsm.Demop.H*lsm.Demop
-madj2 = lhlop.H * madj.ravel()
-madj2 = madj2.reshape(nx, nz)
+
+dmig = lsm.Demop * madj.ravel()
+dmig = dmig.reshape(ns, nr, nt)
+mig2 = lsm.Demop.H * dmig.flatten()
+mig2 = mig2.reshape(nx,nz)
 
 # fista solution
-minv_sparse = lsm.solve(d.ravel(), solver=FISTA, **dict(eps=1e4, niter=30, show=True))
+minv_sparse = lsm.solve(d.ravel(), solver=FISTA, **dict(eps=1e4, niter=40, show=True))
 minv_sparse = minv_sparse.reshape(nx, nz)
 
 # Create the 2D Transform wavelet operator
@@ -184,17 +187,26 @@ minv_imdb = minv_imdb.reshape(nx, nz)
 minv_imdb_hl = NormalEquationsInversion(lsmhl_op,None,madj.ravel(),maxiter=10)
 minv_imdb_hl = minv_imdb_hl.reshape(nx, nz)
 
-minv_imdbr = NormalEquationsInversion(lsm.Demop,Dop,d.ravel(),maxiter=10)
-minv_imdbr = minv_imdbr.reshape(nx, nz) # no effect
-
-minv_imdbw = NormalEquationsInversion(lsm.Demop * Wop.H,None,d.ravel(),maxiter=10)
-minv_imdbw = Wop.H * minv_imdb2
-minv_imdbw= minv_imdbw.reshape(nx, nz) # no effect
-
 dinv_imdbhl = LSMop * minv_imdb_hl.ravel()
 dinv_imdbhl = dinv_imdbhl.reshape(ns, nr, nt)
-minv_imdbhlsqr = lsm.solve(dinv_imdbhl.ravel(), solver=FISTA, **dict(eps=1e4, niter=30, show=True))
+minv_imdbhlsqr = lsm.solve(dinv_imdbhl.ravel(), solver=FISTA, **dict(iter_lim=30, show=True))
 minv_imdbhlsqr = minv_imdbhlsqr.reshape(nx, nz)
+
+dinv_imdb = LSMop * minv_imdb.ravel()
+dinv_imdb = dinv_imdb.reshape(ns, nr, nt)
+minv_imdblsqr = lsm.solve(dinv_imdb.ravel(), solver=lsqr, **dict(iter_lim=30, show=True))
+minv_imdblsqr = minv_imdblsqr.reshape(nx, nz)
+
+LSMHLop = LinearOperator(lsmhl_op, explicit=False)
+minv_hlop = LSMHLop.div(madj.ravel(), niter=30)
+minv_hlop = minv_hlop.reshape(nx, nz)
+dinv_hlop = LSMop * minv_hlop.ravel()
+dinv_hlop = dinv_hlop.reshape(ns, nr, nt)
+minv_hlop2 = lsqr(lsm.Demop, dinv_hlop.flatten(), damp=1e-10, iter_lim=30, show=1)[0]
+minv_hlop2 = minv_hlop2.reshape(nx, nz)
+
+minv_op = LSMop.div(d.ravel(), niter=30)
+minv_op = minv_op.reshape(nx, nz)
 
 # deblurring using split-bregman
 Dop = [FirstDerivative(Nz * Nx, dims=(Nz, Nx), dir=0, edge=False),
@@ -229,6 +241,8 @@ minv_dbf = minv_dbf.reshape(nx, nz)
 minv_dbf_hl = FISTA(lsmhl_op * Wop.H, madj.flatten(), eps=1e-1, niter=10)[0]
 minv_dbf_hl = Wop.H * minv_dbf_hl
 minv_dbf_hl = minv_dbf_hl.reshape(nx, nz)
+
+#%%
 
 #%% Demigration
 
@@ -291,6 +305,17 @@ plt.colorbar(im)
 plt.axis('tight')
 plt.xlabel('x [m]'),plt.ylabel('y [m]')
 plt.title('minv_dbf')
+
+# minv sparse (fista)
+plt.figure(figsize=(10,5))
+im = plt.imshow(minv_sparse.T, cmap='gray', vmin=rmin, vmax=rmax)
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('x [m]'),plt.ylabel('y [m]')
+plt.title('minv_sparse')
+
+
+
 #%%
 def zero_offset(data):
     
