@@ -123,10 +123,11 @@ travd = (trav/dt - itrav)
 itrav = itrav.reshape(nx, nz, ns*nr)
 travd = travd.reshape(nx, nz, ns*nr)
 
+wav, wavt, wavc = ricker(t[:41], f0=20)
+
+#%%
 Sop = Spread(dims=(nx, nz), dimsd=(ns*nr, nt), table=itrav, dtable=travd, engine='numba')
 dottest(Sop, ns*nr*nt, nx*nz)
-
-wav, wavt, wavc = ricker(t[:41], f0=20)
 Cop = Convolve1D(ns*nr*nt, h=wav, offset=wavc, dims=(ns*nr, nt), dir=1)
 
 LSMop = Cop*Sop
@@ -157,8 +158,10 @@ d = d.reshape(ns, nr, nt)
 madj = lsm.Demop.H * d.ravel()
 madj = madj.reshape(nx, nz)
 
+#%%
+
 # LS solution
-minv = lsm.solve(d.ravel(), solver=lsqr, **dict(iter_lim=10, show=True))
+minv = lsm.solve(d.ravel(), solver=lsqr, **dict(iter_lim=5, show=True))
 minv = minv.reshape(nx, nz)
 
 # create the LhL operator
@@ -168,6 +171,9 @@ dmig = lsm.Demop * madj.ravel()
 dmig = dmig.reshape(ns, nr, nt)
 mig2 = lsm.Demop.H * dmig.flatten()
 mig2 = mig2.reshape(nx,nz)
+# get the filter:
+nfilter = int(np.ceil(wavc)+1); eps = 0.001;
+minv2,filt = leastsub(madj,mig2,nfilter,eps) 
 
 # fista solution
 minv_sparse = lsm.solve(d.ravel(), solver=FISTA, **dict(eps=1e4, niter=40, show=True))
@@ -186,24 +192,6 @@ minv_imdb = minv_imdb.reshape(nx, nz)
 
 minv_imdb_hl = NormalEquationsInversion(lsmhl_op,None,madj.ravel(),maxiter=10)
 minv_imdb_hl = minv_imdb_hl.reshape(nx, nz)
-
-dinv_imdbhl = LSMop * minv_imdb_hl.ravel()
-dinv_imdbhl = dinv_imdbhl.reshape(ns, nr, nt)
-minv_imdbhlsqr = lsm.solve(dinv_imdbhl.ravel(), solver=FISTA, **dict(iter_lim=30, show=True))
-minv_imdbhlsqr = minv_imdbhlsqr.reshape(nx, nz)
-
-dinv_imdb = LSMop * minv_imdb.ravel()
-dinv_imdb = dinv_imdb.reshape(ns, nr, nt)
-minv_imdblsqr = lsm.solve(dinv_imdb.ravel(), solver=lsqr, **dict(iter_lim=30, show=True))
-minv_imdblsqr = minv_imdblsqr.reshape(nx, nz)
-
-LSMHLop = LinearOperator(lsmhl_op, explicit=False)
-minv_hlop = LSMHLop.div(madj.ravel(), niter=30)
-minv_hlop = minv_hlop.reshape(nx, nz)
-dinv_hlop = LSMop * minv_hlop.ravel()
-dinv_hlop = dinv_hlop.reshape(ns, nr, nt)
-minv_hlop2 = lsqr(lsm.Demop, dinv_hlop.flatten(), damp=1e-10, iter_lim=30, show=1)[0]
-minv_hlop2 = minv_hlop2.reshape(nx, nz)
 
 minv_op = LSMop.div(d.ravel(), niter=30)
 minv_op = minv_op.reshape(nx, nz)
@@ -234,11 +222,11 @@ minv_sbhlsqr = minv_sbhlsqr.reshape(nx, nz)
 # minv_hlsb = minv_hlsb.reshape(nx, nz)
 
 # Apply deblurring using FISTA
-minv_dbf = FISTA(lsm.Demop * Wop.H, d.flatten(), eps=1e-1, niter=10)[0]
+minv_dbf = FISTA(lsm.Demop * Wop.H, d.flatten(), eps=1e-1, niter=30)[0]
 minv_dbf = Wop.H * minv_dbf
 minv_dbf = minv_dbf.reshape(nx, nz)
 
-minv_dbf_hl = FISTA(lsmhl_op * Wop.H, madj.flatten(), eps=1e-1, niter=10)[0]
+minv_dbf_hl = FISTA(lsmhl_op * Wop.H, madj.flatten(), eps=1e-1, niter=30)[0]
 minv_dbf_hl = Wop.H * minv_dbf_hl
 minv_dbf_hl = minv_dbf_hl.reshape(nx, nz)
 
@@ -247,12 +235,29 @@ minv_dbf_hl = minv_dbf_hl.reshape(nx, nz)
 #%% Demigration
 
 # adjoint
-dadj = LSMop * madj.ravel()
+# dadj = LSMop * madj.ravel()
+dadj = lsm.Demop * madj.ravel()
 dadj = dadj.reshape(ns, nr, nt)
 
+# remigrate
+madj2 = lsm.Demop.H * dadj.ravel()
+madj2 = madj.reshape(nx,nz)
+
 # LS solution
-dinv = LSMop * minv.ravel()
+dinv = lsm.Demop * minv.ravel()
 dinv = dinv.reshape(ns, nr, nt)
+
+# sb solution
+dinv_sb = lsm.Demop * minv_sb.ravel()
+dinv_sb = dinv_sb.reshape(ns, nr, nt)
+
+# NEI solution
+dinv_imdb = lsm.Demop * minv_imdb.ravel()
+dinv_imdb = dinv_imdb.reshape(ns, nr, nt)
+
+# NEI solution
+dinv_dbf = lsm.Demop * minv_dbf.ravel()
+dinv_dbf = dinv_dbf.reshape(ns, nr, nt)
 
 #%%
 rmin = -np.abs(refl).max()
@@ -314,8 +319,53 @@ plt.axis('tight')
 plt.xlabel('x [m]'),plt.ylabel('y [m]')
 plt.title('minv_sparse')
 
+# comparison true, adj and inv
+fig, axs = plt.subplots(1, 3, figsize=(10, 6))
+axs[0].imshow(d[ns//2, :, :500].T, cmap='gray')
+axs[0].set_title(r'$d$')
+axs[0].axis('tight')
+axs[1].imshow(dadj[ns//2, :, :500].T, cmap='gray')
+axs[1].set_title(r'$d_{adj}$')
+axs[1].axis('tight')
+axs[2].imshow(dinv[ns//2, :, :500].T, cmap='gray')
+axs[2].set_title(r'$d_{inv}$')
+axs[2].axis('tight')
 
+# comparison true, adj and sb
+fig, axs = plt.subplots(1, 3, figsize=(10, 6))
+axs[0].imshow(d[ns//2, :, :500].T, cmap='gray')
+axs[0].set_title(r'$d$')
+axs[0].axis('tight')
+axs[1].imshow(dadj[ns//2, :, :500].T, cmap='gray')
+axs[1].set_title(r'$d_{adj}$')
+axs[1].axis('tight')
+axs[2].imshow(dinv_sb[ns//2, :, :500].T, cmap='gray')
+axs[2].set_title(r'$d_{inv_sb}$')
+axs[2].axis('tight')
 
+# comparison true, adj and imdb
+fig, axs = plt.subplots(1, 3, figsize=(10, 6))
+axs[0].imshow(d[ns//2, :, :500].T, cmap='gray')
+axs[0].set_title(r'$d$')
+axs[0].axis('tight')
+axs[1].imshow(dadj[ns//2, :, :500].T, cmap='gray')
+axs[1].set_title(r'$d_{adj}$')
+axs[1].axis('tight')
+axs[2].imshow(dinv_imdb[ns//2, :, :500].T, cmap='gray')
+axs[2].set_title(r'$d_{inv_imdb}$')
+axs[2].axis('tight')
+
+# comparison true, adj and fista
+fig, axs = plt.subplots(1, 3, figsize=(10, 6))
+axs[0].imshow(d[ns//2, :, :500].T, cmap='gray')
+axs[0].set_title(r'$d$')
+axs[0].axis('tight')
+axs[1].imshow(dadj[ns//2, :, :500].T, cmap='gray')
+axs[1].set_title(r'$d_{adj}$')
+axs[1].axis('tight')
+axs[2].imshow(dinv_dbf[ns//2, :, :500].T, cmap='gray')
+axs[2].set_title(r'$d_{inv_fista}$')
+axs[2].axis('tight')
 #%%
 def zero_offset(data):
     
