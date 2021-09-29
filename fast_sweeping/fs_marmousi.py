@@ -126,8 +126,8 @@ for hby in [1,2,4]:
     print(f'Running with h/{hby}: \n')
     # Point-source location
     
-    zmin = min(z); xmin = min(x);
-    zmax = max(z); xmax = max(x);
+    zmin = min(z); xmin = min(x); # dz = 0.01/hby;
+    zmax = max(z); xmax = max(x); # dx = 0.01/hby;
     
     epsilon = 0.2*np.ones((nz,nx))
     delta = 0.1*np.ones((nz,nx))
@@ -275,3 +275,57 @@ cbar.ax.tick_params(labelsize=10)
 
 # Third-order accuracy
 Tref = (16*Tfac4 - 8*Tfac2 + Tfac1)/9
+# Tref = ((tau*T0)/1000)/9
+
+#%%
+# Plot the traveltime solution error
+
+plt.style.use('default')
+
+plt.figure(figsize=(4,4))
+
+ax = plt.gca()
+im = ax.imshow(np.abs(Tref-Tcomp), extent = (x[0], x[-1], z[-1], z[0]), aspect=1, cmap="jet")
+
+
+plt.xlabel('Offset (km)', fontsize=14)
+plt.xticks(fontsize=10)
+
+plt.ylabel('Depth (km)', fontsize=14)
+plt.yticks(fontsize=10)
+
+# ax.xaxis.set_major_locator(plt.MultipleLocator(0.5))
+# ax.yaxis.set_major_locator(plt.MultipleLocator(0.5))
+
+divider = make_axes_locatable(ax)
+cax = divider.append_axes("right", size="6%", pad=0.15)
+
+cbar = plt.colorbar(im, cax=cax)
+
+cbar.set_label('seconds',size=10)
+cbar.ax.tick_params(labelsize=10)
+
+#%%
+# Traveltime contour plots
+
+plt.figure(figsize=(4,4))
+
+ax = plt.gca()
+im1 = ax.contour(Tref, 6, extent=[xmin,xmax,zmin,zmax], colors='k')
+im2 = ax.contour(Tcomp, 6, extent=[xmin,xmax,zmin,zmax], colors='r',linestyles = 'dashed')
+
+ax.plot(sx,sz,'k*',markersize=8)
+
+plt.xlabel('Offset (km)', fontsize=14)
+plt.ylabel('Depth (km)', fontsize=14)
+ax.tick_params(axis='both', which='major', labelsize=8)
+plt.gca().invert_yaxis()
+h1,_ = im1.legend_elements()
+h2,_ = im2.legend_elements()
+ax.legend([h1[0], h2[0]], ['Reference', 'First-order FSM'],fontsize=12)
+
+# ax.xaxis.set_major_locator(plt.MultipleLocator(0.5))
+# ax.yaxis.set_major_locator(plt.MultipleLocator(0.5))
+
+plt.xticks(fontsize=10)
+plt.yticks(fontsize=10)
