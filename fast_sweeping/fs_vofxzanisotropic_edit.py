@@ -32,7 +32,6 @@ for hby in [1,2,4]:
     x = np.arange(xmin,xmax+dx,dx)
     nx = x.size
 
-
     Z,X = np.meshgrid(z,x,indexing='ij')
 
     v0 = 2.; # Velocity at the origin of the model
