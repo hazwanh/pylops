@@ -120,8 +120,12 @@ plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
 plt.title('Reflectivity')
 plt.ylim(z[-1], z[0]);
 
+#%% Computes the travel time using eikonal
+trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vel, mode='eikonal')
+
 #%%
-for hby in [1,2,4]:
+# for hby in [1,2,4]:
+for hby in [1]:
 
     print(f'Running with h/{hby}: \n')
     # Point-source location
@@ -163,10 +167,10 @@ for hby in [1,2,4]:
     c0 = np.sin(thetas)*np.cos(thetas)*(vzs**2-vxs**2)
     
     Z,X = np.meshgrid(z,x,indexing='ij')
-    T0 = np.sqrt((b0*(X-sx[0])**2 + 2*c0*(X-sx[0])*(Z-sz[0]) + a0*(Z-sz[0])**2)/(a0*b0-c0**2));
+    T0 = np.sqrt((b0*(X-sx[1])**2 + 2*c0*(X-sx[1])*(Z-sz[1]) + a0*(Z-sz[1])**2)/(a0*b0-c0**2));
     
-    px0 = np.divide(b0*(X-sx[0]) + c0*(Z-sz[0]), T0*(a0*b0-c0**2), out=np.zeros_like(T0), where=T0!=0)
-    pz0 = np.divide(a0*(Z-sz[0]) + c0*(X-sx[0]), T0*(a0*b0-c0**2), out=np.zeros_like(T0), where=T0!=0)
+    px0 = np.divide(b0*(X-sx[1]) + c0*(Z-sz[1]), T0*(a0*b0-c0**2), out=np.zeros_like(T0), where=T0!=0)
+    pz0 = np.divide(a0*(Z-sz[1]) + c0*(X-sx[1]), T0*(a0*b0-c0**2), out=np.zeros_like(T0), where=T0!=0)
     
     rhs = np.ones((nz,nx))
     
@@ -248,7 +252,7 @@ ax = plt.gca()
 im = ax.imshow(vz,extent = (x[0], x[-1], z[-1], z[0]), aspect=1, cmap="jet")
 
 # ax.plot(sx,sz,'k*',markersize=8)
-ax.plot(sources[0],sources[1],'k*',markersize=8)
+ax.plot(sx[0],sz[0],'k*',markersize=8)
 
 plt.xlabel('Offset (km)', fontsize=14)
 plt.xticks(fontsize=10)

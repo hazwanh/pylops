@@ -125,7 +125,6 @@ for hby in [1,2,4]:
 
     print(f'Running with h/{hby}: \n')
     # Point-source location
-    hby = 1
     zmin = min(z); xmin = min(x); # dz = 0.01/hby;
     zmax = max(z); xmax = max(x); # dx = 0.01/hby;
     Z,X = np.meshgrid(z,x,indexing='ij')
