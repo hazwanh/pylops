@@ -93,7 +93,7 @@ for hby in [1,2,4]:
         a0[i] = vxs[i]**2*np.cos(thetas[i])**2 + vzs[i]**2*np.sin(thetas[i])**2
         b0[i] = vzs[i]**2*np.cos(thetas[i])**2 + vxs[i]**2*np.sin(thetas[i])**2
         c0[i] = np.sin(thetas[i])*np.cos(thetas[i])*(vzs[i]**2-vxs[i]**2)
-
+        
         T0 = np.sqrt((b0[i]*(X-sx[i])**2 + 2*c0[i]*(X-sx[i])*(Z-sz[i]) 
                       + a0[i]*(Z-sz[i])**2)/(a0[i]*b0[i]-c0[i]**2)); 
 
