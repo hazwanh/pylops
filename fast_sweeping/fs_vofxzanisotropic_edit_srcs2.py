@@ -16,13 +16,13 @@ import fseikonal.TTI.facttieikonal as fttieik
 import time as tm
 
 #%%
-for hby in [1,4]:
+for hby in [1,2,4]:
 
 
     print(f'Running with h/{hby}: \n')
     # Point-source location
-    sx = np.linspace(0.05, 0.95, num=5)
-    sz = np.ones(5)*0.05;
+    sx = np.linspace(0.05, 0.95, num=3)
+    sz = np.ones(3)*0.05;
 
     zmin = 0.; zmax = 1.; dz = 0.01/hby;
     xmin = 0.; xmax = 1.; dx = 0.01/hby;
@@ -58,7 +58,13 @@ for hby in [1,4]:
     # Number of fixed point iterations 
     nfpi = 5
     
-    TcompTotal = np.ones((nx*nz,len(sz)))
+    if hby == 1:
+        TcompTotal = np.ones((nx*nz,len(sx)))
+        TfacTot = np.zeros((nx*nz,len(sx)))
+        inx = nx
+        inz = nz
+        
+        
     # Source indices
     for i in range(0,len(sx)):
         isz = int(round((sz[i]-zmin)/dz))
@@ -119,8 +125,10 @@ for hby in [1,4]:
             
     
         Tfac = (tau*T0)[::hby,::hby]
+        TfacTot[:,i] = Tfac.reshape(inx*inz)
         exec(f'Tfac{hby} = Tfac') # This will assign traveltimes to variables called Tfac1, Tfac2, and Tfac4
-    
+        exec(f'TfacTot_{hby} = TfacTot')
+        
         time_end = tm.time()
         print('FD modeling runtime:', (time_end - time_start), 's')
 
@@ -159,7 +167,7 @@ for hby in [1,4]:
             print('FD modeling runtime:', (time_end - time_start), 's')
 
         Tcomp = T
-        TcompTotal[:,i] = T.reshape(nx*nz) 
+        TcompTotal[:,i] = T.reshape(inx*inz) 
 
     print(f'---------------------------------------- \n')
 #%%
@@ -199,7 +207,8 @@ cbar.ax.tick_params(labelsize=10)
 
 # Third-order accuracy
 Tref = (16*Tfac4 - 8*Tfac2 + Tfac1)/9
-
+# TrefTot = (16*TfacTot_4[:,1] - 8*TfacTot_2[:,1] + TfacTot_1[:,1])/9
+# TcompTotal_1 = TcompTotal[:,1].reshape(101,101)
 #%%
 # Plot the traveltime solution error
 
