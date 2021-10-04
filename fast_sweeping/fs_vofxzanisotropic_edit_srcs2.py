@@ -69,8 +69,9 @@ for hby in [1,2,4]:
     for i in range(0,len(sx)):
         isz = int(round((sz[i]-zmin)/dz))
         isx = int(round((sx[i]-xmin)/dx))
-
-        print(f"Source location: (sz,sx) = ({sz},{sx})")
+        
+        print(f"Source number: {i+1} out of {len(sx)} ")
+        print(f"Source location: (sz,sx) = ({sz[i]},{sx[i]})")
         print(f"Source indices: (isz,isx) = ({isz},{isx})")
     
         # Checking if the source-point does not lie on the computation grid
@@ -166,8 +167,8 @@ for hby in [1,2,4]:
             time_end = tm.time()
             print('FD modeling runtime:', (time_end - time_start), 's')
 
-        Tcomp = T
-        TcompTotal[:,i] = T.reshape(inx*inz) 
+            Tcomp = T
+            TcompTotal[:,i] = T.reshape(inx*inz) 
 
     print(f'---------------------------------------- \n')
 #%%
@@ -206,9 +207,9 @@ cbar.ax.tick_params(labelsize=10)
 #Trich2 = Tfac2 + (Tfac2-Tfac1)/3.0
 
 # Third-order accuracy
-Tref = (16*Tfac4 - 8*Tfac2 + Tfac1)/9
-# TrefTot = (16*TfacTot_4[:,1] - 8*TfacTot_2[:,1] + TfacTot_1[:,1])/9
-# TcompTotal_1 = TcompTotal[:,1].reshape(101,101)
+# Tref = (16*Tfac4 - 8*Tfac2 + Tfac1)/9
+TrefTot = ((16*TfacTot_4[:,1] - 8*TfacTot_2[:,1] + TfacTot_1[:,1])/9).reshape(101,101)
+TcompTotal_1 = TcompTotal[:,1].reshape(101,101)
 #%%
 # Plot the traveltime solution error
 
@@ -217,7 +218,8 @@ plt.style.use('default')
 plt.figure(figsize=(4,4))
 
 ax = plt.gca()
-im = ax.imshow(np.abs(Tref-Tcomp), extent=[xmin,xmax,zmax,zmin], aspect=1, cmap="jet")
+# im = ax.imshow(np.abs(Tref-Tcomp), extent=[xmin,xmax,zmax,zmin], aspect=1, cmap="jet")
+im = ax.imshow(np.abs(TrefTot-TcompTotal_1), extent=[xmin,xmax,zmax,zmin], aspect=1, cmap="jet")
 
 
 plt.xlabel('Offset (km)', fontsize=14)
@@ -243,8 +245,10 @@ cbar.ax.tick_params(labelsize=10)
 plt.figure(figsize=(4,4))
 
 ax = plt.gca()
-im1 = ax.contour(Tref, 6, extent=[xmin,xmax,zmin,zmax], colors='k')
-im2 = ax.contour(Tcomp, 6, extent=[xmin,xmax,zmin,zmax], colors='r',linestyles = 'dashed')
+# im1 = ax.contour(Tref, 6, extent=[xmin,xmax,zmin,zmax], colors='k')
+# im2 = ax.contour(Tcomp, 6, extent=[xmin,xmax,zmin,zmax], colors='r',linestyles = 'dashed')
+im1 = ax.contour(TrefTot, 6, extent=[xmin,xmax,zmin,zmax], colors='k')
+im2 = ax.contour(TcompTotal_1, 6, extent=[xmin,xmax,zmin,zmax], colors='r',linestyles = 'dashed')
 
 ax.plot(sx,sz,'k*',markersize=8)
 
