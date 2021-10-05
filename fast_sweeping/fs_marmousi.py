@@ -64,7 +64,7 @@ vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel_true, axis=0)
 vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel, axis=1)
 
 # Receivers
-nr = 31
+nr = 5
 rx = np.linspace(dx*25, (nx-25)*dx, nr)
 # rx = np.linspace(dx, (nx)*dx, nr)
 rz = 20*np.ones(nr)
@@ -72,7 +72,7 @@ recs = np.vstack((rx, rz))
 dr = recs[0,1]-recs[0,0]
 
 # Sources
-ns = 31
+ns = 5
 sx = np.linspace(dx*25, (nx-25)*dx, ns)
 # sx = np.linspace(dx, (nx)*dx, ns)
 sz = 20*np.ones(ns)
@@ -120,124 +120,146 @@ plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
 plt.title('Reflectivity')
 plt.ylim(z[-1], z[0]);
 
-#%% Computes the travel time using eikonal
-trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vel, mode='eikonal')
-
 #%%
-# for hby in [1,2,4]:
 for hby in [1]:
+
 
     print(f'Running with h/{hby}: \n')
     # Point-source location
+    zmin = min(z); xmin = min(x); int_dz = dz; dz = 4/hby;
+    zmax = max(z); xmax = max(x); int_dx = dx; dx = 4/hby;
     
-    zmin = min(z); xmin = min(x); # dz = 0.01/hby;
-    zmax = max(z); xmax = max(x); # dx = 0.01/hby;
+    Z,X = np.meshgrid(z,x,indexing='ij')
     
     epsilon = 0.2*np.ones((nz,nx))
     delta = 0.1*np.ones((nz,nx))
     theta = 30.*np.ones((nz,nx))*(mt.pi/180)
     
-    vz = vel.T # 
-    eta = (epsilon-delta)/(1+2*delta)
+    # add eta and epsilon to data
+    vz = vel # 
     vx = vz*np.sqrt(1+2*epsilon)
-    # vx = vel.T*np.sqrt(1+2*epsilon)
-    
+    eta = (epsilon-delta)/(1+2*delta)
+
+    # Number of fast sweeping iterations
     niter = 2
-    
+
     # Number of fixed point iterations 
     nfpi = 5
     
+    if hby == 1:
+        TcompTotal = np.ones((nx*nz,len(sx)))
+        TcompTotal2 = np.ones((nx*nz,len(sx)))
+        TfacTot = np.zeros((nx*nz,len(sx)))
+        inx = nx
+        inz = nz
+        
+        
     # Source indices
-    isz = int(round((sz[0]-zmin)/dz))
-    isx = int(round((sx[0]-xmin)/dx))
-    
-    print(f"Source location: (sz,sx) = ({sz},{sx})")
-    print(f"Source indices: (isz,isx) = ({isz},{isx})")
-    
-    # Checking if the source-point does not lie on the computation grid
-    if abs(int(sz[0]/dz)-sz[0]/dz)>1e-8 or abs(int(sx[0]/dx)-sx[0]/dx)>1e-8:
-        raise ValueError('Source point not on the computation grid \n Either reduce grid spacing or change the source location.')
-    
-    vzs = vz[isz,isx]
-    vxs = vx[isz,isx]
-    thetas = theta[isz,isx]
-    
-    a0 = vxs**2*np.cos(thetas)**2 + vzs**2*np.sin(thetas)**2
-    b0 = vzs**2*np.cos(thetas)**2 + vxs**2*np.sin(thetas)**2
-    c0 = np.sin(thetas)*np.cos(thetas)*(vzs**2-vxs**2)
-    
-    Z,X = np.meshgrid(z,x,indexing='ij')
-    T0 = np.sqrt((b0*(X-sx[1])**2 + 2*c0*(X-sx[1])*(Z-sz[1]) + a0*(Z-sz[1])**2)/(a0*b0-c0**2));
-    
-    px0 = np.divide(b0*(X-sx[1]) + c0*(Z-sz[1]), T0*(a0*b0-c0**2), out=np.zeros_like(T0), where=T0!=0)
-    pz0 = np.divide(a0*(Z-sz[1]) + c0*(X-sx[1]), T0*(a0*b0-c0**2), out=np.zeros_like(T0), where=T0!=0)
-    
-    rhs = np.ones((nz,nx))
-    
-    tn = np.zeros((nz,nx))
-    tn1 = np.zeros((nz,nx))
-    
-    time_start = tm.time()
-    for loop in range(nfpi):
-        # Run the initializer
-        tau = fttieik.fastsweep_init2d(nz, nx, dz, dx, isz, isx, zmin, zmax)
+    for i in range(0,len(sx)):
+        isz = int(round((sz[i]-zmin)/dz))
+        isx = int(round((sx[i]-xmin)/dx))
         
-        # Run the fast sweeping iterator
-        fttieik.fastsweep_run2d(tau, T0, pz0, px0, vz, vx, theta, niter, nz, nx, dz, dx, isz, isx, rhs)
-        
-        pz = T0*np.gradient(tau,dz,axis=0,edge_order=2) + tau*pz0
-        px = T0*np.gradient(tau,dx,axis=1,edge_order=2) + tau*px0
-        
-        pxdash = np.cos(theta)*px + np.sin(theta)*pz
-        pzdash = np.cos(theta)*pz - np.sin(theta)*px
-        
-        rhs = 1 + ((2*eta*vx**2*vz**2)/(1+2*eta))*(pxdash**2)*(pzdash**2)
-        
-        tn1 = tn
-        tn  = tau*T0
-        print(f'L1 norm of update {np.sum(np.abs(tn1-tn))/(nz*nx)}')
-        
-    Tfac = (tau*T0)[::hby,::hby]
-    exec(f'Tfac{hby} = Tfac') # This will assign traveltimes to variables called Tfac1, Tfac2, and Tfac4
+        print(f"Source number: {i+1} out of {len(sx)} ")
+        print(f"Source location: (sz,sx) = ({sz[i]},{sx[i]})")
+        print(f"Source indices: (isz,isx) = ({isz},{isx})")
     
-    time_end = tm.time()
-    print('FD modeling runtime:', (time_end - time_start), 's')
-    
-    if hby==1:
+        # Checking if the source-point does not lie on the computation grid
+        # if abs(int(sz[i]/dz)-sz[i]/dz)>1e-8 or abs(int(sx[i]/dx)-sx[i]/dx)>1e-8:
+        #     raise ValueError('Source point not on the computation grid \n Either reduce grid spacing or change the source location.')
+
+        # Analytical solution for the known traveltime part
+
+        # Velocity at the source location
+        vzs = vz[int(isz),int(isx)]
+        vxs = vx[int(isz),int(isx)]
+        thetas = theta[int(isz),int(isx)]
+
+        a0 = vxs**2*np.cos(thetas)**2 + vzs**2*np.sin(thetas)**2
+        b0 = vzs**2*np.cos(thetas)**2 + vxs**2*np.sin(thetas)**2
+        c0 = np.sin(thetas)*np.cos(thetas)*(vzs**2-vxs**2)
         
-        print(f'\nRunning for first-order regular fast sweeping method')
+        T0 = np.sqrt((b0*(X-sx[i])**2 + 2*c0*(X-sx[i])*(Z-sz[i]) 
+                      + a0*(Z-sz[i])**2)/(a0*b0-c0**2)); 
+
+        px0 = np.divide(b0*(X-sx[i]) + c0*(Z-sz[i]), 
+                        T0*(a0*b0-c0**2), out=np.zeros_like(T0), where=T0!=0)
+        pz0 = np.divide(a0*(Z-sz[i]) + c0*(X-sx[i]), 
+                        T0*(a0*b0-c0**2), out=np.zeros_like(T0), where=T0!=0)
+
         # Initialize right hand side function to 1
         rhs = np.ones((nz,nx))
-        
+    
         # Placeholders to compute change in traveltime on each fixed-point iteration
         tn = np.zeros((nz,nx))
         tn1 = np.zeros((nz,nx))
-        
-        time_start = tm.time()
-        for loop in range(nfpi):
-            # Run the initializer
-            T = ttieik.fastsweep_init2d(nz, nx, dz, dx, isz, isx, zmin, zmax)
-            
-            # Run the fast sweeping iterator
-            ttieik.fastsweep_run2d(T, vz, vx, theta, niter, nz, nx, dz, dx, isz, isx, rhs)
-            
-            pz = np.gradient(T,dz,axis=0,edge_order=2)
-            px = np.gradient(T,dx,axis=1,edge_order=2)
-            
-            pxdash = np.cos(theta)*px + np.sin(theta)*pz
-            pzdash = np.cos(theta)*pz - np.sin(theta)*px
-            
-            rhs = 1 + ((2*eta*vx**2*vz**2)/(1+2*eta))*(pxdash**2)*(pzdash**2)
-            
-            tn1 = tn
-            tn  = T
-            print(f'L1 norm of update {np.sum(np.abs(tn1-tn))/(nz*nx)}')
-        
-        time_end = tm.time()
-        print('FD modeling runtime:', (time_end - time_start), 's')
-        
-        Tcomp = T
     
+        # time_start = tm.time()
+        # for loop in range(nfpi):
+        #     # Run the initializer
+        #     tau = fttieik.fastsweep_init2d(nz, nx, dz, dx, isz, isx, zmin, zmax)
+    
+        #     # Run the fast sweeping iterator
+        #     fttieik.fastsweep_run2d(tau, T0, pz0, px0, vz, vx, theta, niter, nz, nx, dz, dx, isz, isx, rhs)
+            
+        #     pz = T0*np.gradient(tau,dz,axis=0,edge_order=2) + tau*pz0
+        #     px = T0*np.gradient(tau,dx,axis=1,edge_order=2) + tau*px0
+            
+        #     pxdash = np.cos(theta)*px + np.sin(theta)*pz
+        #     pzdash = np.cos(theta)*pz - np.sin(theta)*px
+            
+        #     rhs = 1 + ((2*eta*vx**2*vz**2)/(1+2*eta))*(pxdash**2)*(pzdash**2)
+            
+        #     tn1 = tn
+        #     tn  = tau*T0
+        #     print(f'L1 norm of update {np.sum(np.abs(tn1-tn))/(nz*nx)}')
+            
+    
+        # Tfac = (tau*T0)[::hby,::hby]
+        # TfacTot[:,i] = Tfac.reshape(inx*inz)
+        # exec(f'Tfac{hby} = Tfac') # This will assign traveltimes to variables called Tfac1, Tfac2, and Tfac4
+        # exec(f'TfacTot_{hby} = TfacTot')
+        
+        # time_end = tm.time()
+        # print('FD modeling runtime:', (time_end - time_start), 's')
+
+
+        if hby==1:
+    
+            print(f'\nRunning for first-order regular fast sweeping method')
+            # Initialize right hand side function to 1
+            rhs = np.ones((nz,nx))
+    
+            # Placeholders to compute change in traveltime on each fixed-point iteration
+            tn = np.zeros((nz,nx))
+            tn1 = np.zeros((nz,nx))
+    
+            time_start = tm.time()
+            for loop in range(nfpi):
+                # Run the initializer
+                T = ttieik.fastsweep_init2d(nz, nx, dz, dx, isz, isx, zmin, zmax)
+    
+                # Run the fast sweeping iterator
+                ttieik.fastsweep_run2d(T, vz, vx, theta, niter, nz, nx, dz, dx, isz, isx, rhs)
+                
+                pz = np.gradient(T,dz,axis=0,edge_order=2)
+                px = np.gradient(T,dx,axis=1,edge_order=2)
+                
+                pxdash = np.cos(theta)*px + np.sin(theta)*pz
+                pzdash = np.cos(theta)*pz - np.sin(theta)*px
+                
+                rhs = 1 + ((2*eta*vx**2*vz**2)/(1+2*eta))*(pxdash**2)*(pzdash**2)
+                
+                tn1 = tn
+                tn  = T
+                print(f'L1 norm of update {np.sum(np.abs(tn1-tn))/(nz*nx)}')
+    
+            time_end = tm.time()
+            print('FD modeling runtime:', (time_end - time_start), 's')
+
+            Tcomp = T
+            TcompTotal[:,i] = T.reshape(inx*inz) 
+            TcompTotal2[:,i] = Tcomp.T.reshape(inx*inz) 
+
     print(f'---------------------------------------- \n')
 
 #%%
@@ -333,3 +355,20 @@ ax.legend([h1[0], h2[0]], ['Reference', 'First-order FSM'],fontsize=12)
 
 plt.xticks(fontsize=10)
 plt.yticks(fontsize=10)
+
+#%%
+TfactTot_both = TfacTot_1.reshape(nx * nz, ns, 1)+  \
+    TfacTot_1.reshape(nx * nz, 1, nr)
+TfactTot_both = TfactTot_both.reshape(nx * nz, ns * nr)
+trav = TfactTot_both
+
+Tcompsum = TcompTotal.reshape(nx * nz, ns, 1)+  \
+    TcompTotal.reshape(nx * nz, 1, nr)
+Tcompsum = Tcompsum.reshape(nx * nz, ns * nr)
+trav = TfactTot_both
+
+Tcompsum2 = TcompTotal2.reshape(nx * nz, ns, 1)+  \
+    TcompTotal2.reshape(nx * nz, 1, nr)
+Tcompsum2 = Tcompsum2.reshape(nx * nz, ns * nr)
+trav = TfactTot_both
+

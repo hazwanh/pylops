@@ -171,6 +171,11 @@ for hby in [1,2,4]:
             TcompTotal[:,i] = T.reshape(inx*inz) 
 
     print(f'---------------------------------------- \n')
+    
+#%%
+rx = np.linspace(dx*25, (nx-25)*dx, 3); rz = 20*np.ones(3)
+sources = np.vstack((sx, sz)); recs = np.vstack((rx, rz));
+trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vx, mode='eikonal')  
 #%%
 # Plot the velocity model with the source location
 
