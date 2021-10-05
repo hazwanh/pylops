@@ -173,9 +173,10 @@ for hby in [1,2,4]:
     print(f'---------------------------------------- \n')
     
 #%%
-rx = np.linspace(dx*25, (nx-25)*dx, 3); rz = 20*np.ones(3)
+rx = sx; rz = sz;
 sources = np.vstack((sx, sz)); recs = np.vstack((rx, rz));
-trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vx, mode='eikonal')  
+trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vx, mode='eikonal')
+trav_srcs_1 = trav_srcs[:,1].reshape(nx,nz)
 #%%
 # Plot the velocity model with the source location
 
@@ -264,6 +265,33 @@ plt.gca().invert_yaxis()
 h1,_ = im1.legend_elements()
 h2,_ = im2.legend_elements()
 ax.legend([h1[0], h2[0]], ['Reference', 'First-order FSM'],fontsize=12)
+
+ax.xaxis.set_major_locator(plt.MultipleLocator(0.5))
+ax.yaxis.set_major_locator(plt.MultipleLocator(0.5))
+
+plt.xticks(fontsize=10)
+plt.yticks(fontsize=10)
+
+#%% Compared with pylops TT
+plt.figure(figsize=(4,4))
+
+ax = plt.gca()
+# im1 = ax.contour(Tref, 6, extent=[xmin,xmax,zmin,zmax], colors='k')
+# im2 = ax.contour(Tcomp, 6, extent=[xmin,xmax,zmin,zmax], colors='r',linestyles = 'dashed')
+im1 = ax.contour(TrefTot, 6, extent=[xmin,xmax,zmin,zmax], colors='k')
+im2 = ax.contour(TcompTotal_1, 6, extent=[xmin,xmax,zmin,zmax], colors='r',linestyles = 'dashed')
+im3 = ax.contour(trav_srcs_1.T, 6, extent=[xmin,xmax,zmin,zmax], colors='b',linestyles = 'dotted')
+
+ax.plot(sx,sz,'k*',markersize=8)
+
+plt.xlabel('Offset (km)', fontsize=14)
+plt.ylabel('Depth (km)', fontsize=14)
+ax.tick_params(axis='both', which='major', labelsize=8)
+plt.gca().invert_yaxis()
+h1,_ = im1.legend_elements()
+h2,_ = im2.legend_elements()
+h3,_ = im3.legend_elements()
+ax.legend([h1[0], h2[0],h3[0]], ['Reference', 'First-order FSM','pylops'],fontsize=12)
 
 ax.xaxis.set_major_locator(plt.MultipleLocator(0.5))
 ax.yaxis.set_major_locator(plt.MultipleLocator(0.5))
