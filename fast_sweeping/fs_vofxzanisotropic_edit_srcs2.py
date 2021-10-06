@@ -15,6 +15,25 @@ import fseikonal.TTI.ttieikonal as ttieik
 import fseikonal.TTI.facttieikonal as fttieik
 import time as tm
 
+import scipy as sp
+import skfmm
+
+from scipy.sparse import csr_matrix, vstack
+from scipy.linalg import lstsq, solve
+from scipy.sparse.linalg import LinearOperator, cg, lsqr
+from scipy.signal import convolve, filtfilt
+
+from pylops.utils                      import dottest
+from pylops.utils.wavelets             import *
+from pylops.utils.seismicevents        import *
+from pylops.utils.tapers               import *
+from pylops.basicoperators             import *
+from pylops.signalprocessing           import *
+from pylops.waveeqprocessing.lsm import _traveltime_table, Demigration, LSM
+
+from pylops.optimization.leastsquares  import *
+from pylops.optimization.sparsity  import *
+
 #%%
 for hby in [1,2,4]:
 
@@ -175,8 +194,9 @@ for hby in [1,2,4]:
 #%%
 rx = sx; rz = sz;
 sources = np.vstack((sx, sz)); recs = np.vstack((rx, rz));
-trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vx, mode='eikonal')
-trav_srcs_1 = trav_srcs[:,1].reshape(nx,nz)
+trav, trav_srcs, trav_recs = _traveltime_table(z[::hby], x[::hby], sources, recs, vx[::hby,::hby], mode='eikonal')
+#%%
+trav_srcs_1 = trav[:,1].reshape(int(nx/hby)+1,int(nz/hby)+1)
 #%%
 # Plot the velocity model with the source location
 
@@ -206,18 +226,16 @@ cbar = plt.colorbar(im, cax=cax)
 cbar.set_label('km/s',size=10)
 cbar.ax.tick_params(labelsize=10)
 
-#%%
-# Computing high-order solutions
+#%% Computing high-order solutions
 
 # Second-order accuracy
 #Trich2 = Tfac2 + (Tfac2-Tfac1)/3.0
 
 # Third-order accuracy
 # Tref = (16*Tfac4 - 8*Tfac2 + Tfac1)/9
-TrefTot = ((16*TfacTot_4[:,1] - 8*TfacTot_2[:,1] + TfacTot_1[:,1])/9).reshape(101,101)
-TcompTotal_1 = TcompTotal[:,1].reshape(101,101)
-#%%
-# Plot the traveltime solution error
+TrefTot = ((16*TfacTot_4[:,2] - 8*TfacTot_2[:,2] + TfacTot_1[:,2])/9).reshape(101,101)
+TcompTotal_1 = TcompTotal[:,2].reshape(101,101)
+#%% Plot the traveltime solution error
 
 plt.style.use('default')
 
@@ -225,7 +243,9 @@ plt.figure(figsize=(4,4))
 
 ax = plt.gca()
 # im = ax.imshow(np.abs(Tref-Tcomp), extent=[xmin,xmax,zmax,zmin], aspect=1, cmap="jet")
-im = ax.imshow(np.abs(TrefTot-TcompTotal_1), extent=[xmin,xmax,zmax,zmin], aspect=1, cmap="jet")
+# im = ax.imshow(np.abs(TrefTot-TcompTotal_1), extent=[xmin,xmax,zmax,zmin], aspect=1, cmap="jet")
+# im = ax.imshow(np.abs(TcompTotal_1-TrefTot), extent=[xmin,xmax,zmax,zmin], aspect=1, cmap="jet")
+im = ax.imshow(np.abs(TcompTotal_1-TrefTot), extent=[xmin,xmax,zmax,zmin], aspect=1, cmap="jet")
 
 
 plt.xlabel('Offset (km)', fontsize=14)
@@ -273,6 +293,7 @@ plt.xticks(fontsize=10)
 plt.yticks(fontsize=10)
 
 #%% Compared with pylops TT
+
 plt.figure(figsize=(4,4))
 
 ax = plt.gca()
@@ -299,3 +320,96 @@ ax.yaxis.set_major_locator(plt.MultipleLocator(0.5))
 plt.xticks(fontsize=10)
 plt.yticks(fontsize=10)
 
+#%%
+
+ny = 1; ns=nr=len(sx)
+trav_tcomp = tcomp_t.reshape((int(nx/hby)+1) * (int(nz/hby)+1), ns, 1) + \
+       tcomp_t.reshape((int(nx/hby)+1) * (int(nz/hby)+1), 1, nr)
+trav_tcomp = trav_tcomp.reshape(ny * (int(nx/hby)+1) * (int(nz/hby)+1), ns * nr)
+
+tcomp_t = np.zeros(((int(nx/hby)+1)*(int(nz/hby)+1),len(sx)))
+for i in range(len(sx)):
+    tcomp_new = (TcompTotal[:,i].reshape((int(nx/hby)+1),(int(nz/hby)+1))).T
+    tcomp_t[:,i] = tcomp_new.reshape((int(nx/hby)+1)*(int(nz/hby)+1))
+    
+ny = 1; ns=nr=len(sx)
+trav_tcomp = tcomp_t.reshape((int(nx/hby)+1) * (int(nz/hby)+1), ns, 1) + \
+       tcomp_t.reshape((int(nx/hby)+1) * (int(nz/hby)+1), 1, nr)
+trav_tcomp = trav_tcomp.reshape(ny * (int(nx/hby)+1) * (int(nz/hby)+1), ns * nr)
+
+
+#%%
+n = 0
+trav_1 = trav[:,n].reshape(int(nx/hby)+1,int(nz/hby)+1)
+trav_tcomp_1 = trav_tcomp[:,n].reshape(int(nx/hby)+1,int(nz/hby)+1)
+trav_srcs_1 = trav_srcs[:,n].reshape(int(nx/hby)+1,int(nz/hby)+1)
+trav_recs_1 = trav_recs[:,n].reshape(int(nx/hby)+1,int(nz/hby)+1)
+tcomp_t_1 = tcomp_t[:,n].reshape(int(nx/hby)+1,int(nz/hby)+1)
+TrefTot = ((16*TfacTot_4[:,n] - 8*TfacTot_2[:,n] + TfacTot_1[:,n])/9).reshape(101,101)
+TcompTotal_1 = TcompTotal[:,n].reshape(101,101)
+
+plt.figure(figsize=(4,4))
+
+ax = plt.gca()
+# im1 = ax.contour(Tref, 6, extent=[xmin,xmax,zmin,zmax], colors='k')
+# im2 = ax.contour(Tcomp, 6, extent=[xmin,xmax,zmin,zmax], colors='r',linestyles = 'dashed')
+im1 = ax.contour(TrefTot.T, 6, extent=[xmin,xmax,zmin,zmax], colors='k')
+im2 = ax.contour(TcompTotal_1, 6, extent=[xmin,xmax,zmin,zmax], colors='r',linestyles = 'dashed')
+im4 = ax.contour(trav_1, 6, extent=[xmin,xmax,zmin,zmax], colors='b',linestyles = 'dotted')
+im3 = ax.contour(trav_srcs_1, 6, extent=[xmin,xmax,zmin,zmax], colors='g',linestyles = 'dashed')
+# im4 = ax.contour(tcomp_t_1.T, 6, extent=[xmin,xmax,zmin,zmax], colors='b',linestyles = 'dashed')
+im5 = ax.contour(trav_tcomp_1.T, 6, extent=[xmin,xmax,zmin,zmax], colors='c',linestyles = 'dotted')
+
+ax.plot(sx,sz,'k*',markersize=8)
+
+plt.xlabel('Offset (km)', fontsize=14)
+plt.ylabel('Depth (km)', fontsize=14)
+ax.tick_params(axis='both', which='major', labelsize=8)
+plt.gca().invert_yaxis()
+h1,_ = im1.legend_elements()
+h2,_ = im2.legend_elements()
+h3,_ = im3.legend_elements()
+h4,_ = im4.legend_elements()
+h5,_ = im5.legend_elements()
+# ax.legend([h1[0], h2[0],h3[0],h4[0]], ['Reference', 'First-order FSM','pylops_trav','pylops_srcs'],fontsize=8)
+# ax.legend([h1[0], h2[0],h3[0]], ['Reference', 'First-order FSM','pylops_srcs'],fontsize=12)
+# ax.legend([h1[0], h2[0],h3[0],h4[0]], ['Reference', 'First-order FSM','trav_srcs','trav_srcs'],fontsize=12)
+ax.legend([h1[0], h2[0],h3[0],h4[0],h5[0]], ['Reference', 'First-order FSM','pylops_trav','pylops_srcs','FSM_trav'],fontsize=8)
+
+ax.xaxis.set_major_locator(plt.MultipleLocator(0.5))
+ax.yaxis.set_major_locator(plt.MultipleLocator(0.5))
+
+plt.xticks(fontsize=10)
+plt.yticks(fontsize=10)
+
+#%%
+n = 8
+trav_1 = trav[:,n].reshape(int(nx/hby)+1,int(nz/hby)+1)
+trav_tcomp_1 = trav_tcomp[:,n].reshape(int(nx/hby)+1,int(nz/hby)+1)
+
+plt.figure(figsize=(4,4))
+
+ax = plt.gca()
+# im1 = ax.contour(Tref, 6, extent=[xmin,xmax,zmin,zmax], colors='k')
+# im2 = ax.contour(Tcomp, 6, extent=[xmin,xmax,zmin,zmax], colors='r',linestyles = 'dashed')
+im1 = ax.contour(trav_1, 6, extent=[xmin,xmax,zmin,zmax], colors='b',linestyles = 'dotted')
+im2 = ax.contour(trav_tcomp_1, 6, extent=[xmin,xmax,zmin,zmax], colors='r',linestyles = 'dashed')
+
+ax.plot(sx,sz,'k*',markersize=8)
+
+plt.xlabel('Offset (km)', fontsize=14)
+plt.ylabel('Depth (km)', fontsize=14)
+ax.tick_params(axis='both', which='major', labelsize=8)
+plt.gca().invert_yaxis()
+h1,_ = im1.legend_elements()
+h2,_ = im2.legend_elements()
+# h5,_ = im3.legend_elements()
+# ax.legend([h1[0], h2[0],h3[0],h4[0]], ['Reference', 'First-order FSM','pylops_trav','pylops_srcs'],fontsize=8)
+ax.legend([h1[0], h2[0]], ['pylops_trav','fs_trav'],fontsize=12)
+# ax.legend([h1[0], h2[0],h3[0],h4[0],h5[0]], ['Reference', 'First-order FSM','pylops_trav','pylops_srcs','FSM_trav'],fontsize=8)
+
+ax.xaxis.set_major_locator(plt.MultipleLocator(0.5))
+ax.yaxis.set_major_locator(plt.MultipleLocator(0.5))
+
+plt.xticks(fontsize=10)
+plt.yticks(fontsize=10)

@@ -121,13 +121,13 @@ plt.title('Reflectivity')
 plt.ylim(z[-1], z[0]);
 
 #%%
-for hby in [4,2,1]:
+for hby in [1]:
 
 
     print(f'Running with h/{hby}: \n')
     # Point-source location
-    zmin = min(z); xmin = min(x); int_dz = dz; dz = 4*hby;
-    zmax = max(z); xmax = max(x); int_dx = dx; dx = 4*hby;
+    zmin = min(z); xmin = min(x); int_dz = dz; dz = 4/hby;
+    zmax = max(z); xmax = max(x); int_dx = dx; dx = 4/hby;
     
     Z,X = np.meshgrid(z,x,indexing='ij')
     
@@ -193,34 +193,34 @@ for hby in [4,2,1]:
         tn = np.zeros((nz,nx))
         tn1 = np.zeros((nz,nx))
     
-        time_start = tm.time()
-        for loop in range(nfpi):
-            # Run the initializer
-            tau = fttieik.fastsweep_init2d(nz, nx, dz, dx, isz, isx, zmin, zmax)
+        # time_start = tm.time()
+        # for loop in range(nfpi):
+        #     # Run the initializer
+        #     tau = fttieik.fastsweep_init2d(nz, nx, dz, dx, isz, isx, zmin, zmax)
     
-            # Run the fast sweeping iterator
-            fttieik.fastsweep_run2d(tau, T0, pz0, px0, vz, vx, theta, niter, nz, nx, dz, dx, isz, isx, rhs)
+        #     # Run the fast sweeping iterator
+        #     fttieik.fastsweep_run2d(tau, T0, pz0, px0, vz, vx, theta, niter, nz, nx, dz, dx, isz, isx, rhs)
             
-            pz = T0*np.gradient(tau,dz,axis=0,edge_order=2) + tau*pz0
-            px = T0*np.gradient(tau,dx,axis=1,edge_order=2) + tau*px0
+        #     pz = T0*np.gradient(tau,dz,axis=0,edge_order=2) + tau*pz0
+        #     px = T0*np.gradient(tau,dx,axis=1,edge_order=2) + tau*px0
             
-            pxdash = np.cos(theta)*px + np.sin(theta)*pz
-            pzdash = np.cos(theta)*pz - np.sin(theta)*px
+        #     pxdash = np.cos(theta)*px + np.sin(theta)*pz
+        #     pzdash = np.cos(theta)*pz - np.sin(theta)*px
             
-            rhs = 1 + ((2*eta*vx**2*vz**2)/(1+2*eta))*(pxdash**2)*(pzdash**2)
+        #     rhs = 1 + ((2*eta*vx**2*vz**2)/(1+2*eta))*(pxdash**2)*(pzdash**2)
             
-            tn1 = tn
-            tn  = tau*T0
-            print(f'L1 norm of update {np.sum(np.abs(tn1-tn))/(nz*nx)}')
+        #     tn1 = tn
+        #     tn  = tau*T0
+        #     print(f'L1 norm of update {np.sum(np.abs(tn1-tn))/(nz*nx)}')
             
     
-        Tfac = (tau*T0)[::hby,::hby]
-        TfacTot[:,i] = Tfac.reshape(inx*inz)
-        exec(f'Tfac{hby} = Tfac') # This will assign traveltimes to variables called Tfac1, Tfac2, and Tfac4
-        exec(f'TfacTot_{hby} = TfacTot')
+        # Tfac = (tau*T0)[::hby,::hby]
+        # TfacTot[:,i] = Tfac.reshape(inx*inz)
+        # exec(f'Tfac{hby} = Tfac') # This will assign traveltimes to variables called Tfac1, Tfac2, and Tfac4
+        # exec(f'TfacTot_{hby} = TfacTot')
         
-        time_end = tm.time()
-        print('FD modeling runtime:', (time_end - time_start), 's')
+        # time_end = tm.time()
+        # print('FD modeling runtime:', (time_end - time_start), 's')
 
 
         if hby==1:
@@ -258,9 +258,35 @@ for hby in [4,2,1]:
 
             Tcomp = T
             TcompTotal[:,i] = T.reshape(inx*inz) 
-            TcompTotal2[:,i] = Tcomp.T.reshape(inx*inz) 
 
     print(f'---------------------------------------- \n')
+
+#%%
+
+tcomp_t = np.zeros(((int(nx/hby))*(int(nz/hby)),len(sx)))
+for i in range(len(sx)):
+    tcomp_new = (TcompTotal[:,i].reshape((int(nx/hby)),(int(nz/hby)))).T
+    tcomp_t[:,i] = tcomp_new.reshape((int(nx/hby))*(int(nz/hby)))
+    
+ny = 1; ns=nr=len(sx)
+trav_tcomp = tcomp_t.reshape((int(nx/hby)) * (int(nz/hby)), ns, 1) + \
+       tcomp_t.reshape((int(nx/hby)) * (int(nz/hby)), 1, nr)
+trav_tcomp = trav_tcomp.reshape(ny * (int(nx/hby)) * (int(nz/hby)), ns * nr)
+
+#%%
+trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vel, mode='eikonal') 
+
+nt = 400
+dt = 0.004
+t = np.arange(nt)*dt
+
+# Generate the ricker wavelet
+itrav = (np.floor(trav/dt)).astype(np.int32)
+travd = (trav/dt - itrav)
+itrav = itrav.reshape(nx, nz, ns*nr)
+travd = travd.reshape(nx, nz, ns*nr)
+
+wav, wavt, wavc = ricker(t[:41], f0=20)
 
 #%%
 # Plot the velocity model with the source location
@@ -333,12 +359,16 @@ cbar.ax.tick_params(labelsize=10)
 
 #%%
 # Traveltime contour plots
+n = 10
+trav_1 = trav[:,n].reshape(int(nx/hby),int(nz/hby))
+trav_tcomp_1 = trav_tcomp[:,n].reshape(int(nx/hby),int(nz/hby))
+
 
 plt.figure(figsize=(4,4))
 
 ax = plt.gca()
-im1 = ax.contour(Tref, 6, extent=[xmin,xmax,zmin,zmax], colors='k')
-im2 = ax.contour(Tcomp, 6, extent=[xmin,xmax,zmin,zmax], colors='r',linestyles = 'dashed')
+im1 = ax.contour(trav_1, 6, extent=[xmin,xmax,zmin,zmax], colors='k')
+im2 = ax.contour(trav_tcomp_1, 6, extent=[xmin,xmax,zmin,zmax], colors='r',linestyles = 'dashed')
 
 ax.plot(sx,sz,'k*',markersize=8)
 
