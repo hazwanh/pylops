@@ -22,6 +22,7 @@ from scipy.sparse import csr_matrix, vstack
 from scipy.linalg import lstsq, solve
 from scipy.sparse.linalg import LinearOperator, cg, lsqr
 from scipy.signal import convolve, filtfilt
+from scipy import io
 
 from pylops.utils                      import dottest
 from pylops.utils.wavelets             import *
@@ -64,7 +65,7 @@ vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel_true, axis=0)
 vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel, axis=1)
 
 # Receivers
-nr = 5
+nr = 31
 rx = np.linspace(dx*25, (nx-25)*dx, nr)
 # rx = np.linspace(dx, (nx)*dx, nr)
 rz = 20*np.ones(nr)
@@ -72,7 +73,7 @@ recs = np.vstack((rx, rz))
 dr = recs[0,1]-recs[0,0]
 
 # Sources
-ns = 5
+ns = 31
 sx = np.linspace(dx*25, (nx-25)*dx, ns)
 # sx = np.linspace(dx, (nx)*dx, ns)
 sz = 20*np.ones(ns)
@@ -136,7 +137,7 @@ for hby in [1]:
     theta = 30.*np.ones((nz,nx))*(mt.pi/180)
     
     # add eta and epsilon to data
-    vz = vel # 
+    vz = vel.T # 
     vx = vz*np.sqrt(1+2*epsilon)
     eta = (epsilon-delta)/(1+2*delta)
 
@@ -274,19 +275,46 @@ trav_tcomp = tcomp_t.reshape((int(nx/hby)) * (int(nz/hby)), ns, 1) + \
 trav_tcomp = trav_tcomp.reshape(ny * (int(nx/hby)) * (int(nz/hby)), ns * nr)
 
 #%%
-trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vel, mode='eikonal') 
-
 nt = 400
 dt = 0.004
 t = np.arange(nt)*dt
 
 # Generate the ricker wavelet
-itrav = (np.floor(trav/dt)).astype(np.int32)
-travd = (trav/dt - itrav)
+itrav = (np.floor(trav_tcomp/dt)).astype(np.int32)
+travd = (trav_tcomp/dt - itrav)
 itrav = itrav.reshape(nx, nz, ns*nr)
 travd = travd.reshape(nx, nz, ns*nr)
 
 wav, wavt, wavc = ricker(t[:41], f0=20)
+
+#%%
+trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vx.T, mode='eikonal') 
+
+# Generate the ricker wavelet
+itrav_py = (np.floor(trav/dt)).astype(np.int32)
+travd_py = (trav/dt - itrav_py)
+itrav_py = itrav_py.reshape(nx, nz, ns*nr)
+travd_py = travd_py.reshape(nx, nz, ns*nr)
+
+Sop_py = Spread(dims=(nx, nz), dimsd=(ns*nr, nt), table=itrav_py, dtable=travd_py, engine='numba')
+dottest(Sop_py, ns*nr*nt, nx*nz)
+Cop_py = Convolve1D(ns*nr*nt, h=wav, offset=wavc, dims=(ns*nr, nt), dir=1)
+
+LSMop_py = Cop_py*Sop_py
+LSMop_py = LinearOperator(LSMop_py, explicit=False)
+
+d_py = LSMop_py * refl.ravel()
+d_py = d_py.reshape(ns, nr, nt)
+
+madj_py = LSMop_py.H * d_py.ravel()
+madj_py = madj_py.reshape(nx, nz)
+
+plt.figure(figsize=(10,5))
+im = plt.imshow(madj_py.T, cmap='gray')
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('x [m]'),plt.ylabel('y [m]')
+plt.title('madj_py')
 
 #%%
 # Plot the velocity model with the source location
@@ -300,7 +328,7 @@ ax = plt.gca()
 im = ax.imshow(vz,extent = (x[0], x[-1], z[-1], z[0]), aspect=1, cmap="jet")
 
 # ax.plot(sx,sz,'k*',markersize=8)
-ax.plot(sx[0],sz[0],'k*',markersize=8)
+ax.plot(sx,sz,'k*',markersize=8)
 
 plt.xlabel('Offset (km)', fontsize=14)
 plt.xticks(fontsize=10)
@@ -320,65 +348,28 @@ cbar.set_label('km/s',size=10)
 cbar.ax.tick_params(labelsize=10)
 
 #%%
-# Computing high-order solutions
-
-# Second-order accuracy
-#Trich2 = Tfac2 + (Tfac2-Tfac1)/3.0
-
-# Third-order accuracy
-Tref = (16*Tfac4 - 8*Tfac2 + Tfac1)/9
-# Tref = ((tau*T0)/1000)/9
-
-#%%
-# Plot the traveltime solution error
-
-plt.style.use('default')
-
-plt.figure(figsize=(4,4))
-
-ax = plt.gca()
-im = ax.imshow(np.abs(Tref-Tcomp), extent = (x[0], x[-1], z[-1], z[0]), aspect=1, cmap="jet")
-
-
-plt.xlabel('Offset (km)', fontsize=14)
-plt.xticks(fontsize=10)
-
-plt.ylabel('Depth (km)', fontsize=14)
-plt.yticks(fontsize=10)
-
-# ax.xaxis.set_major_locator(plt.MultipleLocator(0.5))
-# ax.yaxis.set_major_locator(plt.MultipleLocator(0.5))
-
-divider = make_axes_locatable(ax)
-cax = divider.append_axes("right", size="6%", pad=0.15)
-
-cbar = plt.colorbar(im, cax=cax)
-
-cbar.set_label('seconds',size=10)
-cbar.ax.tick_params(labelsize=10)
-
-#%%
 # Traveltime contour plots
-n = 10
+n = 481
 trav_1 = trav[:,n].reshape(int(nx/hby),int(nz/hby))
 trav_tcomp_1 = trav_tcomp[:,n].reshape(int(nx/hby),int(nz/hby))
 
 
-plt.figure(figsize=(4,4))
+plt.figure(figsize=(20,10))
 
 ax = plt.gca()
-im1 = ax.contour(trav_1, 6, extent=[xmin,xmax,zmin,zmax], colors='k')
-im2 = ax.contour(trav_tcomp_1, 6, extent=[xmin,xmax,zmin,zmax], colors='r',linestyles = 'dashed')
+im1 = ax.imshow(vz,extent = (x[0], x[-1], z[-1], z[0]), aspect=1, cmap="jet")
+im2 = ax.contour(trav_1.T, 10, extent=[xmin,xmax,zmin,zmax], colors='k',linestyles = 'dashed')
+im3 = ax.contour(trav_tcomp_1.T, 10, extent=[xmin,xmax,zmin,zmax], colors='r',linestyles = 'dashed')
 
 ax.plot(sx,sz,'k*',markersize=8)
 
 plt.xlabel('Offset (km)', fontsize=14)
 plt.ylabel('Depth (km)', fontsize=14)
 ax.tick_params(axis='both', which='major', labelsize=8)
-plt.gca().invert_yaxis()
-h1,_ = im1.legend_elements()
-h2,_ = im2.legend_elements()
-ax.legend([h1[0], h2[0]], ['Reference', 'First-order FSM'],fontsize=12)
+# plt.gca().invert_yaxis()
+# h1,_ = im2.legend_elements()
+# h2,_ = im3.legend_elements()
+# ax.legend([h1[0], h2[0]], ['pylops tt', 'First-order FSM'],fontsize=12)
 
 # ax.xaxis.set_major_locator(plt.MultipleLocator(0.5))
 # ax.yaxis.set_major_locator(plt.MultipleLocator(0.5))
@@ -387,18 +378,43 @@ plt.xticks(fontsize=10)
 plt.yticks(fontsize=10)
 
 #%%
-TfactTot_both = TfacTot_1.reshape(nx * nz, ns, 1)+  \
-    TfacTot_1.reshape(nx * nz, 1, nr)
-TfactTot_both = TfactTot_both.reshape(nx * nz, ns * nr)
-trav = TfactTot_both
+Sop = Spread(dims=(nx, nz), dimsd=(ns*nr, nt), table=itrav, dtable=travd, engine='numba')
+dottest(Sop, ns*nr*nt, nx*nz)
+Cop = Convolve1D(ns*nr*nt, h=wav, offset=wavc, dims=(ns*nr, nt), dir=1)
 
-Tcompsum = TcompTotal.reshape(nx * nz, ns, 1)+  \
-    TcompTotal.reshape(nx * nz, 1, nr)
-Tcompsum = Tcompsum.reshape(nx * nz, ns * nr)
-trav = TfactTot_both
+LSMop = Cop*Sop
+LSMop = LinearOperator(LSMop, explicit=False)
 
-Tcompsum2 = TcompTotal2.reshape(nx * nz, ns, 1)+  \
-    TcompTotal2.reshape(nx * nz, 1, nr)
-Tcompsum2 = Tcompsum2.reshape(nx * nz, ns * nr)
-trav = TfactTot_both
+d = LSMop * refl.ravel()
+d = d.reshape(ns, nr, nt)
 
+madj = LSMop.H * d.ravel()
+madj = madj.reshape(nx, nz)
+
+#%%
+rmin = -np.abs(madj).max()
+rmax = np.abs(madj).max()
+
+# true refl
+plt.figure(figsize=(10,5))
+im = plt.imshow(refl.T, cmap='gray', vmin=-np.abs(refl).max(), vmax=np.abs(refl).max())
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('x [m]'),plt.ylabel('y [m]')
+plt.title('true refl')
+
+# madj
+plt.figure(figsize=(10,5))
+im = plt.imshow(madj.T, cmap='gray',vmin = rmin, vmax = rmax)
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('x [m]'),plt.ylabel('y [m]')
+plt.title('fs traveltimes')
+
+# madj
+plt.figure(figsize=(10,5))
+im = plt.imshow(madj_py.T, cmap='gray',vmin = rmin, vmax = rmax)
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('x [m]'),plt.ylabel('y [m]')
+plt.title('old traveltimes')
