@@ -28,7 +28,7 @@ from pylops.utils.seismicevents        import *
 from pylops.utils.tapers               import *
 from pylops.basicoperators             import *
 from pylops.signalprocessing           import *
-from pylops.waveeqprocessing.lsm_edit import _traveltime_table, Demigration, LSM
+from pylops.waveeqprocessing.lsm import _traveltime_table, Demigration, LSM
 
 from pylops.optimization.leastsquares  import *
 from pylops.optimization.sparsity  import *

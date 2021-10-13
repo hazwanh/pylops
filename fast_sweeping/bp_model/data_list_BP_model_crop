@@ -1,0 +1,17 @@
+Name of variable in model:
+
+1. BP_Vp_Model.mat
+d_0z_1000z_4500x_6000x
+d_0z_2000z_6500x_9500x
+
+1. BP_Epsilon_Model.mat
+eps_0z_1000z_4500x_6000x
+eps_0z_2000z_6500x_9500x
+
+3. BP_Delta_Model.mat
+delta_0z_1000z_4500x_6000x
+delta_0z_2000z_6500x_9500x
+
+4. BP_Theta_Model.mat
+theta_0z_1000z_4500x_6000x
+theta_0z_2000z_6500x_9500x
