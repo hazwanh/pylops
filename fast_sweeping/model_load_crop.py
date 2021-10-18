@@ -12,7 +12,7 @@ from scipy import io
 import numpy as np
 
 #%%
-filename = '/home/csi-13/Downloads/ModelParams/Epsilon_Model.sgy'
+filename = '/home/csi-13/Downloads/ModelParams/Vp_Model.sgy'
 with segyio.open(filename,ignore_geometry=True) as f:
   # Get basic attributes
   n_traces = f.tracecount
@@ -95,10 +95,12 @@ with segyio.open(filename,ignore_geometry=True) as f:
   data = f.trace.raw[:] # get all data into memory
   print('N Traces:', n_traces,' N Samples:', n_samples,' Sample rate:', sample_rate,'ms')
 
+# dx = dz = 4;
+# model_thet1_int4 = data.T[:1500:dz,4500:6000:dx]
+
+# for 1500x3000
 dx = dz = 4;
-model_thet1_int4 = data.T[:1500:dz,4500:6000:dx]
-x = np.arange(0,model_vp1_int4.shape[0])
-z = np.arange(0,model_vp1_int4.shape[1])
+model_thet1_int4 = data.T[:1500:dx,3750:6750:dz]
 
 plt.figure(figsize=(15,5))
 plt.imshow(model_thet1_int4,cmap='jet')
@@ -117,10 +119,11 @@ with segyio.open(filename,ignore_geometry=True) as f:
   data = f.trace.raw[:] # get all data into memory
   print('N Traces:', n_traces,' N Samples:', n_samples,' Sample rate:', sample_rate,'ms')
 
+# dx = dz = 4;
+# model_eps1_int4 = data.T[:1500:dz,4500:6000:dx]
+# for 1500x3000
 dx = dz = 4;
-model_eps1_int4 = data.T[:1500:dz,4500:6000:dx]
-x = np.arange(0,model_vp1_int4.shape[0])
-z = np.arange(0,model_vp1_int4.shape[1])
+model_eps1_int4 = data.T[:1500:dx,3750:6750:dz]
 
 plt.figure(figsize=(15,5))
 plt.imshow(model_eps1_int4,cmap='jet')
@@ -139,10 +142,11 @@ with segyio.open(filename,ignore_geometry=True) as f:
   data = f.trace.raw[:] # get all data into memory
   print('N Traces:', n_traces,' N Samples:', n_samples,' Sample rate:', sample_rate,'ms')
 
+# dx = dz = 4;
+# model_del1_int4 = data.T[:1500:dz,4500:6000:dx]
+# for 1500x3000
 dx = dz = 4;
-model_del1_int4 = data.T[:1500:dz,4500:6000:dx]
-x = np.arange(0,model_vp1_int4.shape[0])
-z = np.arange(0,model_vp1_int4.shape[1])
+model_del1_int4 = data.T[:1500:dx,3750:6750:dz]
 
 plt.figure(figsize=(15,5))
 plt.imshow(model_del1_int4,cmap='jet')
@@ -153,7 +157,7 @@ plt.show()
 
 #%% save data
 
-io.savemat('BP_model_crop_int4_375x375.mat',{'model_vp1_int4':model_vp1_int4,
+io.savemat('BP_model_crop_int4_375x750.mat',{'model_vp1_int4':model_vp1_int4,
                                  'model_eps1_int4':model_eps1_int4,
                                  'model_del1_int4':model_del1_int4,
                                  'model_thet1_int4':model_thet1_int4,

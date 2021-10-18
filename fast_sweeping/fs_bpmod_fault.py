@@ -45,12 +45,11 @@ import math as mt
 
 #%% Generate the marmousi model and display
 
-datapath = '/home/csi-13/Documents/pylops/fast_sweeping/bp_model/BP_model_crop_int4_375x375.mat'
-datapath2 = '/home/csi-13/Documents/pylops/fast_sweeping/bp_model/BP_model_crop_int4.mat'
-vel_true = (io.loadmat(datapath)['model_vp1_int4']).T
-epsilon = (io.loadmat(datapath)['model_eps1_int4']).T
-delta = (io.loadmat(datapath)['model_del1_int4']).T
-theta = (io.loadmat(datapath)['model_thet1_int4']).T
+datapath = '/home/csi-13/Documents/pylops/fast_sweeping/bp_model/BP_model_crop_fault_375x749_9600x12596.mat'
+vel_true = (io.loadmat(datapath)['model_vp3']).T
+epsilon = (io.loadmat(datapath)['model_eps3']).T
+delta = (io.loadmat(datapath)['model_del3']).T
+theta = (io.loadmat(datapath)['model_thet3']).T
 x = io.loadmat(datapath)['x']
 z = io.loadmat(datapath)['z']
 
@@ -147,16 +146,16 @@ plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
 plt.title('Delta')
 plt.ylim(z[-1], z[0])
 
-plt.figure(figsize=(10,5))
-im = plt.imshow(vx, cmap='jet',
-                extent = (x[0], x[-1], z[-1], z[0]))
-plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
-plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
-plt.colorbar(im)
-plt.axis('tight')
-plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
-plt.title('Velocity overlay with epsilon')
-plt.ylim(z[-1], z[0])
+# plt.figure(figsize=(10,5))
+# im = plt.imshow(vx, cmap='jet',
+#                 extent = (x[0], x[-1], z[-1], z[0]))
+# plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
+# plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
+# plt.colorbar(im)
+# plt.axis('tight')
+# plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
+# plt.title('Velocity overlay with epsilon')
+# plt.ylim(z[-1], z[0])
 
 
 # plt.figure(figsize=(10,5))
@@ -184,6 +183,7 @@ for hby in [1]:
     vz = vel.T # 
     vx = vz*np.sqrt(1+2*epsilon.T)
     eta = (epsilon.T-delta.T)/(1+2*delta.T)
+    theta =  theta.T
 
     # Number of fast sweeping iterations
     niter = 2
@@ -302,22 +302,22 @@ for hby in [1]:
             print('FD modeling runtime:', (time_end - time_start), 's')
 
             Tcomp = T
-            TcompTotal[:,i] = T.reshape(inx*inz) 
+            TcompTotal[:,i] = T.reshape(inz*inx)
 
     print(f'---------------------------------------- \n')
 
 tcomp_t = np.zeros(((int(nx/hby))*(int(nz/hby)),len(sx)))
 for i in range(len(sx)):
-    tcomp_new = (TcompTotal[:,i].reshape((int(nx/hby)),(int(nz/hby)))).T
-    tcomp_t[:,i] = tcomp_new.reshape((int(nx/hby))*(int(nz/hby)))
+    tcomp_new = (TcompTotal[:,i].reshape((int(nz/hby)),(int(nx/hby)))).T
+    tcomp_t[:,i] = tcomp_new.reshape((int(nz/hby))*(int(nx/hby)))
     
 ny = 1; ns=nr=len(sx)
-trav_tcomp = tcomp_t.reshape((int(nx/hby)) * (int(nz/hby)), ns, 1) + \
-       tcomp_t.reshape((int(nx/hby)) * (int(nz/hby)), 1, nr)
-trav_tcomp = trav_tcomp.reshape(ny * (int(nx/hby)) * (int(nz/hby)), ns * nr)
+trav_tcomp = tcomp_t.reshape((int(nz/hby)) * (int(nx/hby)), ns, 1) + \
+       tcomp_t.reshape((int(nz/hby)) * (int(nx/hby)), 1, nr)
+trav_tcomp = trav_tcomp.reshape(ny * (int(nz/hby)) * (int(nx/hby)), ns * nr)
 
 #%%
-nt = 550
+nt = 800
 dt = 0.004
 t = np.arange(nt)*dt
 
@@ -370,10 +370,10 @@ madj_py = madj_py.reshape(nx, nz)
 
 
 #%%
-minv_py = LSMop_py.div(d_py.ravel(), niter=100)
+minv_py = LSMop_py.div(d_py.ravel(), niter=25)
 minv_py = minv_py.reshape(nx, nz)
 
-minv_fs = LSMop_fs.div(d_fs.ravel(), niter=100)
+minv_fs = LSMop_fs.div(d_fs.ravel(), niter=25)
 minv_fs = minv_fs.reshape(nx, nz)
 
 #%%
@@ -423,11 +423,11 @@ zmin = min(z); xmin = min(x);
 zmax = max(z); xmax = max(x); 
 
 # Traveltime contour plots
-n = 960
+n =481
 trav_1 = trav[:,n].reshape(int(nx/hby),int(nz/hby))
 trav_tcomp_1 = trav_tcomp[:,n].reshape(int(nx/hby),int(nz/hby))
 
-plt.figure(figsize=(20,10))
+plt.figure(figsize=(10,5))
 
 ax = plt.gca()
 im1 = ax.imshow(vx,extent = (x[0], x[-1], z[-1], z[0]), aspect=1, cmap="jet")
@@ -439,6 +439,7 @@ ax.plot(sx,sz,'r*',markersize=8)
 plt.xlabel('Offset (km)', fontsize=14)
 plt.ylabel('Depth (km)', fontsize=14)
 plt.title('Traveltime contour plot',fontsize=14)
+plt.colorbar(im1)
 ax.tick_params(axis='both', which='major', labelsize=8)
 # plt.gca().invert_yaxis()
 h1,_ = im2.legend_elements()
