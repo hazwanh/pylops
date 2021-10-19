@@ -48,9 +48,12 @@ for hby in [1,2,4]:
 
     z = np.arange(zmin,zmax+dz,dz)
     nz = z.size
-
+    
     x = np.arange(xmin,xmax+dx,dx)
     nx = x.size
+    
+    # print(f'z and x shape is z = {z.shape}, x = {x.shape}')
+    # print(f'z and x shape is dz = {dz}, dx = {dx}')
 
     Z,X = np.meshgrid(z,x,indexing='ij')
 
