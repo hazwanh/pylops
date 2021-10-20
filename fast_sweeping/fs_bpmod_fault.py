@@ -370,10 +370,10 @@ madj_py = madj_py.reshape(nx, nz)
 
 
 #%%
-minv_py = LSMop_py.div(d_py.ravel(), niter=25)
+minv_py = LSMop_py.div(d_py.ravel(), niter=75)
 minv_py = minv_py.reshape(nx, nz)
 
-minv_fs = LSMop_fs.div(d_fs.ravel(), niter=25)
+minv_fs = LSMop_fs.div(d_fs.ravel(), niter=75)
 minv_fs = minv_fs.reshape(nx, nz)
 
 #%%
@@ -452,29 +452,36 @@ ax.legend([h1[0], h2[0]], ['pylops tt', 'fast-sweep tt'],fontsize=12)
 plt.xticks(fontsize=10)
 plt.yticks(fontsize=10)
 
-#%%
-rmin = -np.abs(refl).max()
-rmax = np.abs(refl).max()
+#%% Generate shot gather
 
-# true refl
 plt.figure(figsize=(10,5))
-im = plt.imshow(refl.T, cmap='gray', vmin=rmin, vmax=rmax)
+im = plt.imshow(minv_fs.T, cmap='gray',vmin=rmin, vmax=rmax)
 plt.colorbar(im)
 plt.axis('tight')
 plt.xlabel('x [m]'),plt.ylabel('y [m]')
-plt.title('true refl')
+plt.title('minv_fs')
 
-# madj
-plt.figure(figsize=(10,5))
-im = plt.imshow(madj.T, cmap='gray')
-plt.colorbar(im)
-plt.axis('tight')
-plt.xlabel('x [m]'),plt.ylabel('y [m]')
-plt.title('madj')
+rmin = -np.abs(d_fs).max()
+rmax = np.abs(d_fs).max()
 
-plt.figure(figsize=(10,5))
-im = plt.imshow(minv.T, cmap='gray', vmin=rmin, vmax=rmax)
-plt.colorbar(im)
-plt.axis('tight')
-plt.xlabel('x [m]'),plt.ylabel('y [m]')
-plt.title('minv')
+fig, axs = plt.subplots(1, 3, figsize=(10, 6))
+axs[0].imshow(d_py[0, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
+axs[0].set_title(f'shot: 1')
+axs[0].axis('tight')
+axs[1].imshow(d_py[ns//2, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
+axs[1].set_title(f'$shot:{ns//2} $')
+axs[1].axis('tight')
+axs[2].imshow(d_py[30, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
+axs[2].set_title(f'$shot: 31$')
+axs[2].axis('tight')
+
+fig, axs = plt.subplots(1, 3, figsize=(10, 6))
+axs[0].imshow(d_fs[0, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
+axs[0].set_title(f'shot: 1')
+axs[0].axis('tight')
+axs[1].imshow(d_fs[ns//2, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
+axs[1].set_title(f'$shot:{ns//2} $')
+axs[1].axis('tight')
+axs[2].imshow(d_fs[30, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
+axs[2].set_title(f'$shot: 31$')
+axs[2].axis('tight')

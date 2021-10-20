@@ -45,7 +45,7 @@ import math as mt
 
 #%% Generate the marmousi model and display
 
-datapath = '/home/csi-13/Documents/pylops/fast_sweeping/bp_model/BP_model_crop_375x750_6500x9500.mat'
+datapath = '/home/csi-13/Documents/pylops/fast_sweeping/bp_model/bpmodel_anticline_375x750_6500x9500.mat'
 vel_true = (io.loadmat(datapath)['model_vp2']).T
 epsilon = (io.loadmat(datapath)['model_eps2']).T
 delta = (io.loadmat(datapath)['model_del2']).T
@@ -88,7 +88,7 @@ ds = sources[0,1]-sources[0,0]
 velmin = 1492
 velmax = np.abs(-1*vel_true).max()
 
-plt.figure(figsize=(15,7))
+plt.figure(figsize=(10,5))
 im = plt.imshow(vel_true.T, cmap='jet', vmin = velmin, vmax = velmax,
                 extent = (x[0], x[-1], z[-1], z[0]))
 plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
@@ -146,28 +146,28 @@ plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
 plt.title('Delta')
 plt.ylim(z[-1], z[0])
 
-# plt.figure(figsize=(10,5))
-# im = plt.imshow(vx, cmap='jet',
-#                 extent = (x[0], x[-1], z[-1], z[0]))
-# plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
-# plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
-# plt.colorbar(im)
-# plt.axis('tight')
-# plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
-# plt.title('Velocity overlay with epsilon')
-# plt.ylim(z[-1], z[0])
+plt.figure(figsize=(10,5))
+im = plt.imshow(vx, cmap='jet',vmin = velmin, vmax = velmax,
+                extent = (x[0], x[-1], z[-1], z[0]))
+plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
+plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
+plt.title('Velocity overlay with epsilon')
+plt.ylim(z[-1], z[0])
 
 
-# plt.figure(figsize=(10,5))
-# im = plt.imshow(eta, cmap='rainbow',
-#                 extent = (x[0], x[-1], z[-1], z[0]))
-# plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
-# plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
-# plt.colorbar(im)
-# plt.axis('tight')
-# plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
-# plt.title('Delta')
-# plt.ylim(z[-1], z[0])
+plt.figure(figsize=(10,5))
+im = plt.imshow(eta, cmap='jet',
+                extent = (x[0], x[-1], z[-1], z[0]))
+plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
+plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
+plt.title('eta')
+plt.ylim(z[-1], z[0])
 #%%
 for hby in [1]:
 
@@ -377,8 +377,8 @@ minv_fs = LSMop_fs.div(d_fs.ravel(), niter=25)
 minv_fs = minv_fs.reshape(nx, nz)
 
 #%%
-rmin = -np.abs(madj_fs).max()
-rmax = np.abs(madj_fs).max()
+rmin = -np.abs(madj_py).max()
+rmax = np.abs(madj_py).max()
 
 plt.figure(figsize=(10,5))
 im = plt.imshow(madj_py.T, cmap='gray',vmin=rmin, vmax=rmax)
@@ -423,7 +423,7 @@ zmin = min(z); xmin = min(x);
 zmax = max(z); xmax = max(x); 
 
 # Traveltime contour plots
-n =481
+n = 960
 trav_1 = trav[:,n].reshape(int(nx/hby),int(nz/hby))
 trav_tcomp_1 = trav_tcomp[:,n].reshape(int(nx/hby),int(nz/hby))
 

@@ -45,7 +45,7 @@ import math as mt
 
 #%% Generate the marmousi model and display
 
-datapath = '/home/csi-13/Documents/pylops/fast_sweeping/bp_model/BP_model_crop_int4_375x750.mat'
+datapath = '/home/csi-13/Documents/pylops/fast_sweeping/bp_model/bpmodel_salt_375x750_3750x6750.mat'
 vel_true = (io.loadmat(datapath)['model_vp1_int4']).T
 epsilon = (io.loadmat(datapath)['model_eps1_int4']).T
 delta = (io.loadmat(datapath)['model_del1_int4']).T
@@ -68,7 +68,7 @@ vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel_true, axis=0)
 vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel, axis=1)
 
 # Receivers
-nr = 5
+nr = 31
 rx = np.linspace(dx*25, (nx-25)*dx, nr)
 # rx = np.linspace(dx, (nx)*dx, nr)
 rz = 20*np.ones(nr)
@@ -76,7 +76,7 @@ recs = np.vstack((rx, rz))
 dr = recs[0,1]-recs[0,0]
 
 # Sources
-ns = 5
+ns = 31
 sx = np.linspace(dx*25, (nx-25)*dx, ns)
 # sx = np.linspace(dx, (nx)*dx, ns)
 sz = 20*np.ones(ns)
@@ -88,7 +88,7 @@ ds = sources[0,1]-sources[0,0]
 velmin = 1492
 velmax = np.abs(-1*vel_true).max()
 
-plt.figure(figsize=(15,7))
+plt.figure(figsize=(10,5))
 im = plt.imshow(vel_true.T, cmap='jet', vmin = velmin, vmax = velmax,
                 extent = (x[0], x[-1], z[-1], z[0]))
 plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
@@ -158,17 +158,21 @@ plt.title('Velocity overlay with epsilon')
 plt.ylim(z[-1], z[0])
 
 
-# plt.figure(figsize=(10,5))
-# im = plt.imshow(eta, cmap='rainbow',
-#                 extent = (x[0], x[-1], z[-1], z[0]))
-# plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
-# plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
-# plt.colorbar(im)
-# plt.axis('tight')
-# plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
-# plt.title('Delta')
-# plt.ylim(z[-1], z[0])
+plt.figure(figsize=(10,5))
+im = plt.imshow(eta, cmap='jet',
+                extent = (x[0], x[-1], z[-1], z[0]))
+plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
+plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
+plt.title('eta')
+plt.ylim(z[-1], z[0])
 #%%
+
+TcompTotal = io.loadmat('TcompTotal_salt_31x31_375x750.mat')['TcompTotal']
+hby = 1;
+
 for hby in [1]:
 
 
@@ -316,7 +320,7 @@ trav_tcomp = tcomp_t.reshape((int(nz/hby)) * (int(nx/hby)), ns, 1) + \
        tcomp_t.reshape((int(nz/hby)) * (int(nx/hby)), 1, nr)
 trav_tcomp = trav_tcomp.reshape(ny * (int(nz/hby)) * (int(nx/hby)), ns * nr)
 
-#%%
+#%% 
 nt = 800
 dt = 0.004
 t = np.arange(nt)*dt
@@ -423,7 +427,7 @@ zmin = min(z); xmin = min(x);
 zmax = max(z); xmax = max(x); 
 
 # Traveltime contour plots
-n =481
+n = 960
 trav_1 = trav[:,n].reshape(int(nx/hby),int(nz/hby))
 trav_tcomp_1 = trav_tcomp[:,n].reshape(int(nx/hby),int(nz/hby))
 
@@ -452,29 +456,28 @@ ax.legend([h1[0], h2[0]], ['pylops tt', 'fast-sweep tt'],fontsize=12)
 plt.xticks(fontsize=10)
 plt.yticks(fontsize=10)
 
-#%%
-rmin = -np.abs(refl).max()
-rmax = np.abs(refl).max()
+#%% Generate shot gather
+rmin = -np.abs(d_fs).max()
+rmax = np.abs(d_fs).max()
 
-# true refl
-plt.figure(figsize=(10,5))
-im = plt.imshow(refl.T, cmap='gray', vmin=rmin, vmax=rmax)
-plt.colorbar(im)
-plt.axis('tight')
-plt.xlabel('x [m]'),plt.ylabel('y [m]')
-plt.title('true refl')
+fig, axs = plt.subplots(1, 3, figsize=(10, 6))
+axs[0].imshow(d_py[0, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
+axs[0].set_title(f'shot: 1')
+axs[0].axis('tight')
+axs[1].imshow(d_py[ns//2, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
+axs[1].set_title(f'$shot:{ns//2} $')
+axs[1].axis('tight')
+axs[2].imshow(d_py[30, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
+axs[2].set_title(f'$shot: 31$')
+axs[2].axis('tight')
 
-# madj
-plt.figure(figsize=(10,5))
-im = plt.imshow(madj.T, cmap='gray')
-plt.colorbar(im)
-plt.axis('tight')
-plt.xlabel('x [m]'),plt.ylabel('y [m]')
-plt.title('madj')
-
-plt.figure(figsize=(10,5))
-im = plt.imshow(minv.T, cmap='gray', vmin=rmin, vmax=rmax)
-plt.colorbar(im)
-plt.axis('tight')
-plt.xlabel('x [m]'),plt.ylabel('y [m]')
-plt.title('minv')
+fig, axs = plt.subplots(1, 3, figsize=(10, 6))
+axs[0].imshow(d_fs[0, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
+axs[0].set_title(f'shot: 1')
+axs[0].axis('tight')
+axs[1].imshow(d_fs[ns//2, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
+axs[1].set_title(f'$shot:{ns//2} $')
+axs[1].axis('tight')
+axs[2].imshow(d_fs[30, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
+axs[2].set_title(f'$shot: 31$')
+axs[2].axis('tight')
