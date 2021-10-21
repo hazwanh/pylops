@@ -370,15 +370,15 @@ madj_py = madj_py.reshape(nx, nz)
 
 
 #%%
-minv_py = LSMop_py.div(d_py.ravel(), niter=25)
+minv_py = LSMop_py.div(d_py.ravel(), niter=50)
 minv_py = minv_py.reshape(nx, nz)
 
-minv_fs = LSMop_fs.div(d_fs.ravel(), niter=25)
+minv_fs = LSMop_fs.div(d_fs.ravel(), niter=50)
 minv_fs = minv_fs.reshape(nx, nz)
 
 #%%
-rmin = -np.abs(madj_py).max()
-rmax = np.abs(madj_py).max()
+rmin = -np.abs(madj_fs).max()
+rmax = np.abs(madj_fs).max()
 
 plt.figure(figsize=(10,5))
 im = plt.imshow(madj_py.T, cmap='gray',vmin=rmin, vmax=rmax)
@@ -410,14 +410,14 @@ im = plt.imshow(minv_py.T, cmap='gray',vmin=rmin, vmax=rmax)
 plt.colorbar(im)
 plt.axis('tight')
 plt.xlabel('x [m]'),plt.ylabel('y [m]')
-plt.title('minv_py')
+plt.title('minv_py iter:50')
 
 plt.figure(figsize=(10,5))
 im = plt.imshow(minv_fs.T, cmap='gray',vmin=rmin, vmax=rmax)
 plt.colorbar(im)
 plt.axis('tight')
 plt.xlabel('x [m]'),plt.ylabel('y [m]')
-plt.title('minv_fs')
+plt.title('minv_fs iter:50')
 #%%
 zmin = min(z); xmin = min(x);
 zmax = max(z); xmax = max(x); 

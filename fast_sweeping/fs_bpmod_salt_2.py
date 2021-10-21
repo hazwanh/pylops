@@ -48,9 +48,9 @@ import math as mt
 # datapath = '/home/csi-13/Documents/pylops/fast_sweeping/bp_model/bpmodel_salt_375x750_3750x6750.mat'
 datapath = '/home/hazwanh/Documents/Coding/python/pylops/fast_sweeping/bp_model/bpmodel_salt_375x750_3750x6750.mat'
 vel_true = (io.loadmat(datapath)['model_vp1_int4']).T
-epsilon = (io.loadmat(datapath)['model_eps1_int4']).T
-delta = (io.loadmat(datapath)['model_del1_int4']).T
-theta = (io.loadmat(datapath)['model_thet1_int4']).T
+epsilon_true = (io.loadmat(datapath)['model_eps1_int4']).T
+delta_true = (io.loadmat(datapath)['model_del1_int4']).T
+theta_true = (io.loadmat(datapath)['model_thet1_int4']).T
 x = io.loadmat(datapath)['x']
 z = io.loadmat(datapath)['z']
 
@@ -69,7 +69,7 @@ vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel_true, axis=0)
 vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel, axis=1)
 
 # Receivers
-nr = 31
+nr = 5
 rx = np.linspace(dx*25, (nx-25)*dx, nr)
 # rx = np.linspace(dx, (nx)*dx, nr)
 rz = 20*np.ones(nr)
@@ -77,7 +77,7 @@ recs = np.vstack((rx, rz))
 dr = recs[0,1]-recs[0,0]
 
 # Sources
-ns = 31
+ns = 5
 sx = np.linspace(dx*25, (nx-25)*dx, ns)
 # sx = np.linspace(dx, (nx)*dx, ns)
 sz = 20*np.ones(ns)
@@ -89,7 +89,7 @@ ds = sources[0,1]-sources[0,0]
 velmin = 1492
 velmax = np.abs(-1*vel_true).max()
 
-plt.figure(figsize=(10,5))
+plt.figure(figsize=(15,7))
 im = plt.imshow(vel_true.T, cmap='jet', vmin = velmin, vmax = velmax,
                 extent = (x[0], x[-1], z[-1], z[0]))
 plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
@@ -159,36 +159,75 @@ plt.title('Velocity overlay with epsilon')
 plt.ylim(z[-1], z[0])
 
 
-plt.figure(figsize=(10,5))
-im = plt.imshow(eta, cmap='jet',
-                extent = (x[0], x[-1], z[-1], z[0]))
-plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
-plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
-plt.colorbar(im)
-plt.axis('tight')
-plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
-plt.title('eta')
-plt.ylim(z[-1], z[0])
+# plt.figure(figsize=(10,5))
+# im = plt.imshow(eta, cmap='rainbow',
+#                 extent = (x[0], x[-1], z[-1], z[0]))
+# plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
+# plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
+# plt.colorbar(im)
+# plt.axis('tight')
+# plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
+# plt.title('Delta')
+# plt.ylim(z[-1], z[0])
 #%%
-
-TcompTotal = io.loadmat('TcompTotal_salt_31x31_375x750.mat')['TcompTotal']
-hby = 1;
-
-for hby in [1]:
+for hby in [1,2,4]:
 
 
     print(f'Running with h/{hby}: \n')
+    
+    dx, dz = 4/hby, 4/hby
+    vz = vel_true.T[::int(dz),::int(dx)]
+    x = np.arange(0,vz.shape[1]); z = np.arange(0,vz.shape[0])
+    nx = x.size; nz = z.size
+    
+    # Receivers
+    nr = 3
+    rx = np.linspace(dx*25, (nx-25)*dx, nr)
+    # rx = np.linspace(dx, (nx)*dx, nr)
+    rz = 20*np.ones(nr)
+    recs = np.vstack((rx, rz))
+    dr = recs[0,1]-recs[0,0]
+    
+    # Sources
+    ns = 3
+    sx = np.linspace(dx*25, (nx-25)*dx, ns)
+    # sx = np.linspace(dx, (nx)*dx, ns)
+    sz = 20*np.ones(ns)
+    sources = np.vstack((sx, sz))
+    ds = sources[0,1]-sources[0,0]
+    
+    print(f'z and x shape is z = {z.shape}, x = {x.shape}')
+    print(f'z and x shape is dz = {dz}, dx = {dx}')    
+    
+    epsilon = 0.2*np.ones((nz,nx))
+    delta = 0.1*np.ones((nz,nx))
+    theta = 30.*np.ones((nz,nx))*(mt.pi/180)
+    
+    print(f'epsilon, delta and theta shape is epsilon = {epsilon.shape}, delta = {delta.shape}, theta = {theta.shape}')
+
+    eta = (epsilon-delta)/(1+2*delta)
+    vx = vz*np.sqrt(1+2*epsilon)
+    
+    # epsilon = epsilon_true.T[::int(dz),::int(dx)]
+    # delta = delta_true.T[::int(dz),::int(dx)]
+    # theta = theta_true.T[::int(dz),::int(dx)]
+    
+    # exec(f'x = np.arange(0,vel_anis.shape[1])')
+    # exec(f'z = np.arange(0,vel_anis.shape[0])')
+    # x = np.arange(0,np.max(x)-np.min(x)+dx,dx)
+    # z = np.arange(0,np.max(z)-np.min(z)+dz,dz)
+    # nx, nz = len(x), len(z)
+    
     # Point-source location
-    zmin = min(z); xmin = min(x); int_dz = dz; dz = 4/hby;
-    zmax = max(z); xmax = max(x); int_dx = dx; dx = 4/hby;
+    zmin = min(z); xmin = min(x); 
+    zmax = max(z); xmax = max(x); 
     
     Z,X = np.meshgrid(z,x,indexing='ij')
     
     # add eta and epsilon to data
-    vz = vel.T # 
-    vx = vz*np.sqrt(1+2*epsilon.T)
-    eta = (epsilon.T-delta.T)/(1+2*delta.T)
-    theta =  theta.T
+    # vz = vel_anis # 
+    # vx = vz*np.sqrt(1+2*epsilon)
+    # eta = (epsilon-delta)/(1+2*delta)
 
     # Number of fast sweeping iterations
     niter = 2
@@ -196,12 +235,12 @@ for hby in [1]:
     # Number of fixed point iterations 
     nfpi = 5
     
-    if hby == 1:
-        TcompTotal = np.ones((nx*nz,len(sx)))
-        TcompTotal2 = np.ones((nx*nz,len(sx)))
-        TfacTot = np.zeros((nx*nz,len(sx)))
-        inx = nx
-        inz = nz
+    # if hby == 1:
+    TcompTotal = np.ones((nx*nz,len(sx)))
+    TcompTotal2 = np.ones((nx*nz,len(sx)))
+    TfacTot = np.zeros((nx*nz,len(sx)))
+    inx = nx
+    inz = nz
         
         
     # Source indices
@@ -243,34 +282,34 @@ for hby in [1]:
         tn = np.zeros((nz,nx))
         tn1 = np.zeros((nz,nx))
     
-        # time_start = tm.time()
-        # for loop in range(nfpi):
-        #     # Run the initializer
-        #     tau = fttieik.fastsweep_init2d(nz, nx, dz, dx, isz, isx, zmin, zmax)
+        time_start = tm.time()
+        for loop in range(nfpi):
+            # Run the initializer
+            tau = fttieik.fastsweep_init2d(nz, nx, dz, dx, isz, isx, zmin, zmax)
     
-        #     # Run the fast sweeping iterator
-        #     fttieik.fastsweep_run2d(tau, T0, pz0, px0, vz, vx, theta, niter, nz, nx, dz, dx, isz, isx, rhs)
+            # Run the fast sweeping iterator
+            fttieik.fastsweep_run2d(tau, T0, pz0, px0, vz, vx, theta, niter, nz, nx, dz, dx, isz, isx, rhs)
             
-        #     pz = T0*np.gradient(tau,dz,axis=0,edge_order=2) + tau*pz0
-        #     px = T0*np.gradient(tau,dx,axis=1,edge_order=2) + tau*px0
+            pz = T0*np.gradient(tau,dz,axis=0,edge_order=2) + tau*pz0
+            px = T0*np.gradient(tau,dx,axis=1,edge_order=2) + tau*px0
             
-        #     pxdash = np.cos(theta)*px + np.sin(theta)*pz
-        #     pzdash = np.cos(theta)*pz - np.sin(theta)*px
+            pxdash = np.cos(theta)*px + np.sin(theta)*pz
+            pzdash = np.cos(theta)*pz - np.sin(theta)*px
             
-        #     rhs = 1 + ((2*eta*vx**2*vz**2)/(1+2*eta))*(pxdash**2)*(pzdash**2)
+            rhs = 1 + ((2*eta*vx**2*vz**2)/(1+2*eta))*(pxdash**2)*(pzdash**2)
             
-        #     tn1 = tn
-        #     tn  = tau*T0
-        #     print(f'L1 norm of update {np.sum(np.abs(tn1-tn))/(nz*nx)}')
+            tn1 = tn
+            tn  = tau*T0
+            print(f'L1 norm of update {np.sum(np.abs(tn1-tn))/(nz*nx)}')
             
     
-        # Tfac = (tau*T0)[::hby,::hby]
-        # TfacTot[:,i] = Tfac.reshape(inx*inz)
-        # exec(f'Tfac{hby} = Tfac') # This will assign traveltimes to variables called Tfac1, Tfac2, and Tfac4
-        # exec(f'TfacTot_{hby} = TfacTot')
+        Tfac = (tau*T0)[::hby,::hby]
+        TfacTot[:,i] = Tfac.reshape(inx*inz)
+        exec(f'Tfac{hby} = Tfac') # This will assign traveltimes to variables called Tfac1, Tfac2, and Tfac4
+        exec(f'TfacTot_{hby} = TfacTot')
         
-        # time_end = tm.time()
-        # print('FD modeling runtime:', (time_end - time_start), 's')
+        time_end = tm.time()
+        print('FD modeling runtime:', (time_end - time_start), 's')
 
 
         if hby==1:
@@ -321,7 +360,7 @@ trav_tcomp = tcomp_t.reshape((int(nz/hby)) * (int(nx/hby)), ns, 1) + \
        tcomp_t.reshape((int(nz/hby)) * (int(nx/hby)), 1, nr)
 trav_tcomp = trav_tcomp.reshape(ny * (int(nz/hby)) * (int(nx/hby)), ns * nr)
 
-#%% 
+#%%
 nt = 800
 dt = 0.004
 t = np.arange(nt)*dt
@@ -428,7 +467,7 @@ zmin = min(z); xmin = min(x);
 zmax = max(z); xmax = max(x); 
 
 # Traveltime contour plots
-n = 960
+n =481
 trav_1 = trav[:,n].reshape(int(nx/hby),int(nz/hby))
 trav_tcomp_1 = trav_tcomp[:,n].reshape(int(nx/hby),int(nz/hby))
 
@@ -457,28 +496,29 @@ ax.legend([h1[0], h2[0]], ['pylops tt', 'fast-sweep tt'],fontsize=12)
 plt.xticks(fontsize=10)
 plt.yticks(fontsize=10)
 
-#%% Generate shot gather
-rmin = -np.abs(d_fs).max()
-rmax = np.abs(d_fs).max()
+#%%
+rmin = -np.abs(refl).max()
+rmax = np.abs(refl).max()
 
-fig, axs = plt.subplots(1, 3, figsize=(10, 6))
-axs[0].imshow(d_py[0, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
-axs[0].set_title(f'shot: 1')
-axs[0].axis('tight')
-axs[1].imshow(d_py[ns//2, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
-axs[1].set_title(f'$shot:{ns//2} $')
-axs[1].axis('tight')
-axs[2].imshow(d_py[30, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
-axs[2].set_title(f'$shot: 31$')
-axs[2].axis('tight')
+# true refl
+plt.figure(figsize=(10,5))
+im = plt.imshow(refl.T, cmap='gray', vmin=rmin, vmax=rmax)
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('x [m]'),plt.ylabel('y [m]')
+plt.title('true refl')
 
-fig, axs = plt.subplots(1, 3, figsize=(10, 6))
-axs[0].imshow(d_fs[0, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
-axs[0].set_title(f'shot: 1')
-axs[0].axis('tight')
-axs[1].imshow(d_fs[ns//2, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
-axs[1].set_title(f'$shot:{ns//2} $')
-axs[1].axis('tight')
-axs[2].imshow(d_fs[30, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
-axs[2].set_title(f'$shot: 31$')
-axs[2].axis('tight')
+# madj
+plt.figure(figsize=(10,5))
+im = plt.imshow(madj.T, cmap='gray')
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('x [m]'),plt.ylabel('y [m]')
+plt.title('madj')
+
+plt.figure(figsize=(10,5))
+im = plt.imshow(minv.T, cmap='gray', vmin=rmin, vmax=rmax)
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('x [m]'),plt.ylabel('y [m]')
+plt.title('minv')

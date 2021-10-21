@@ -40,17 +40,20 @@ for hby in [1,2,4]:
 
     print(f'Running with h/{hby}: \n')
     # Point-source location
-    sx = np.linspace(0.05, 0.95, num=3)
-    sz = np.ones(3)*0.05;
+    sx = np.linspace(0.05, 0.95, num=1)
+    sz = np.ones(1)*0.05;
 
     zmin = 0.; zmax = 1.; dz = 0.01/hby;
     xmin = 0.; xmax = 1.; dx = 0.01/hby;
 
     z = np.arange(zmin,zmax+dz,dz)
     nz = z.size
-
+    
     x = np.arange(xmin,xmax+dx,dx)
     nx = x.size
+    
+    # print(f'z and x shape is z = {z.shape}, x = {x.shape}')
+    # print(f'z and x shape is dz = {dz}, dx = {dx}')
 
     Z,X = np.meshgrid(z,x,indexing='ij')
 
@@ -233,6 +236,7 @@ cbar.ax.tick_params(labelsize=10)
 
 # Third-order accuracy
 # Tref = (16*Tfac4 - 8*Tfac2 + Tfac1)/9
+TrefTot = ((16*TfacTot_4 - 8*TfacTot_2 + TfacTot_1)/9).reshape(101,101)
 TrefTot = ((16*TfacTot_4[:,2] - 8*TfacTot_2[:,2] + TfacTot_1[:,2])/9).reshape(101,101)
 TcompTotal_1 = TcompTotal[:,2].reshape(101,101)
 #%% Plot the traveltime solution error
@@ -271,10 +275,10 @@ cbar.ax.tick_params(labelsize=10)
 plt.figure(figsize=(4,4))
 
 ax = plt.gca()
-# im1 = ax.contour(Tref, 6, extent=[xmin,xmax,zmin,zmax], colors='k')
-# im2 = ax.contour(Tcomp, 6, extent=[xmin,xmax,zmin,zmax], colors='r',linestyles = 'dashed')
-im1 = ax.contour(TrefTot, 6, extent=[xmin,xmax,zmin,zmax], colors='k')
-im2 = ax.contour(TcompTotal_1, 6, extent=[xmin,xmax,zmin,zmax], colors='r',linestyles = 'dashed')
+im1 = ax.contour(Tref, 6, extent=[xmin,xmax,zmin,zmax], colors='k')
+im2 = ax.contour(Tcomp, 6, extent=[xmin,xmax,zmin,zmax], colors='r',linestyles = 'dashed')
+# im1 = ax.contour(TrefTot, 6, extent=[xmin,xmax,zmin,zmax], colors='k')
+# im2 = ax.contour(TcompTotal_1, 6, extent=[xmin,xmax,zmin,zmax], colors='r',linestyles = 'dashed')
 
 ax.plot(sx,sz,'k*',markersize=8)
 
