@@ -45,11 +45,11 @@ import math as mt
 
 #%% Generate the marmousi model and display
 
-datapath = '/home/csi-13/Documents/pylops/fast_sweeping/bp_model/bpmodel_anticline_375x750_6500x9500.mat'
+datapath = '/home/hazwanh/Documents/pylops/fast_sweeping/bp_model/bpmodel_anticline_375x750_6500x9500.mat'
 vel_true = (io.loadmat(datapath)['model_vp2']).T
-epsilon = (io.loadmat(datapath)['model_eps2']).T
-delta = (io.loadmat(datapath)['model_del2']).T
-theta = (io.loadmat(datapath)['model_thet2']).T
+epsilon_true = (io.loadmat(datapath)['model_eps2']).T
+delta_true = (io.loadmat(datapath)['model_del2']).T
+theta_true = (io.loadmat(datapath)['model_thet2']).T
 x = io.loadmat(datapath)['x']
 z = io.loadmat(datapath)['z']
 
@@ -66,9 +66,15 @@ v0 = 1492 # initial velocity
 nsmooth=30
 vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel_true, axis=0)
 vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel, axis=1)
+epsilon = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, epsilon_true, axis=0)
+epsilon = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, epsilon, axis=1)
+delta = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, delta_true, axis=0)
+delta = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, delta, axis=1)
+theta = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, theta_true, axis=0)
+theta = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, theta, axis=1)
 
 # Receivers
-nr = 31
+nr = 60
 rx = np.linspace(dx*25, (nx-25)*dx, nr)
 # rx = np.linspace(dx, (nx)*dx, nr)
 rz = 20*np.ones(nr)
@@ -76,7 +82,7 @@ recs = np.vstack((rx, rz))
 dr = recs[0,1]-recs[0,0]
 
 # Sources
-ns = 31
+ns = 60
 sx = np.linspace(dx*25, (nx-25)*dx, ns)
 # sx = np.linspace(dx, (nx)*dx, ns)
 sz = 20*np.ones(ns)
@@ -306,6 +312,8 @@ for hby in [1]:
 
     print(f'---------------------------------------- \n')
 
+io.savemat('TcompTotal_anticline_60x60.mat',{'TcompTotal':TcompTotal})
+
 tcomp_t = np.zeros(((int(nx/hby))*(int(nz/hby)),len(sx)))
 for i in range(len(sx)):
     tcomp_new = (TcompTotal[:,i].reshape((int(nz/hby)),(int(nx/hby)))).T
@@ -321,7 +329,10 @@ nt = 800
 dt = 0.004
 t = np.arange(nt)*dt
 
-# Generate the ricker wavelet
+wav, wavt, wavc = ricker(t[:41], f0=20)
+
+#%%  
+
 itrav_fs = (np.floor(trav_tcomp/dt)).astype(np.int32)
 travd_fs = (trav_tcomp/dt - itrav_fs)
 itrav_fs = itrav_fs.reshape(nx, nz, ns*nr)
@@ -370,15 +381,15 @@ madj_py = madj_py.reshape(nx, nz)
 
 
 #%%
-minv_py = LSMop_py.div(d_py.ravel(), niter=50)
+minv_py = LSMop_py.div(d_py.ravel(), niter=4)
 minv_py = minv_py.reshape(nx, nz)
 
-minv_fs = LSMop_fs.div(d_fs.ravel(), niter=50)
+minv_fs = LSMop_fs.div(d_fs.ravel(), niter=2)
 minv_fs = minv_fs.reshape(nx, nz)
 
 #%%
-rmin = -np.abs(madj_fs).max()
-rmax = np.abs(madj_fs).max()
+rmin = -np.abs(madj_py).max()
+rmax = np.abs(madj_py).max()
 
 plt.figure(figsize=(10,5))
 im = plt.imshow(madj_py.T, cmap='gray',vmin=rmin, vmax=rmax)

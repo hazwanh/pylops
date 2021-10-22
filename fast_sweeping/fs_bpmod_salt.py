@@ -45,8 +45,8 @@ import math as mt
 
 #%% Generate the marmousi model and display
 
-# datapath = '/home/csi-13/Documents/pylops/fast_sweeping/bp_model/bpmodel_salt_375x750_3750x6750.mat'
-datapath = '/home/hazwanh/Documents/Coding/python/pylops/fast_sweeping/bp_model/bpmodel_salt_375x750_3750x6750.mat'
+datapath = '/home/hazwanh/Documents/pylops/fast_sweeping/bp_model/bpmodel_salt_375x750_3750x6750.mat'
+# datapath = '/home/hazwanh/Documents/Coding/python/pylops/fast_sweeping/bp_model/bpmodel_salt_375x750_3750x6750.mat'
 vel_true = (io.loadmat(datapath)['model_vp1_int4']).T
 epsilon = (io.loadmat(datapath)['model_eps1_int4']).T
 delta = (io.loadmat(datapath)['model_del1_int4']).T
@@ -69,7 +69,7 @@ vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel_true, axis=0)
 vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel, axis=1)
 
 # Receivers
-nr = 31
+nr = 60
 rx = np.linspace(dx*25, (nx-25)*dx, nr)
 # rx = np.linspace(dx, (nx)*dx, nr)
 rz = 20*np.ones(nr)
@@ -77,7 +77,7 @@ recs = np.vstack((rx, rz))
 dr = recs[0,1]-recs[0,0]
 
 # Sources
-ns = 31
+ns = 60
 sx = np.linspace(dx*25, (nx-25)*dx, ns)
 # sx = np.linspace(dx, (nx)*dx, ns)
 sz = 20*np.ones(ns)
