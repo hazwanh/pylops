@@ -45,12 +45,12 @@ import math as mt
 
 #%% Generate the marmousi model and display
 
-datapath = '/home/hazwanh/Documents/pylops/fast_sweeping/bp_model/bpmodel_salt_375x750_3750x6750.mat'
-# datapath = '/home/hazwanh/Documents/Coding/python/pylops/fast_sweeping/bp_model/bpmodel_salt_375x750_3750x6750.mat'
+# datapath = 'C:\\Users\\Azyan\\Documents\\pylops\\fast_sweeping\\bp_model\\bpmodel_salt_375x750_3750x6750.mat'
+datapath = '/home/hazwanh/Documents/Coding/python/pylops/fast_sweeping/bp_model/bpmodel_salt_375x750_3750x6750.mat'
 vel_true = (io.loadmat(datapath)['model_vp1_int4']).T
-epsilon = (io.loadmat(datapath)['model_eps1_int4']).T
-delta = (io.loadmat(datapath)['model_del1_int4']).T
-theta = (io.loadmat(datapath)['model_thet1_int4']).T
+epsilon_true = (io.loadmat(datapath)['model_eps1_int4']).T
+delta_true = (io.loadmat(datapath)['model_del1_int4']).T
+theta_true = (io.loadmat(datapath)['model_thet1_int4']).T
 x = io.loadmat(datapath)['x']
 z = io.loadmat(datapath)['z']
 
@@ -67,9 +67,15 @@ v0 = 1492 # initial velocity
 nsmooth=30
 vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel_true, axis=0)
 vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel, axis=1)
+epsilon = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, epsilon_true, axis=0)
+epsilon = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, epsilon, axis=1)
+delta = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, delta_true, axis=0)
+delta = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, delta, axis=1)
+theta = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, theta_true, axis=0)
+theta = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, theta, axis=1)
 
 # Receivers
-nr = 60
+nr = 31
 rx = np.linspace(dx*25, (nx-25)*dx, nr)
 # rx = np.linspace(dx, (nx)*dx, nr)
 rz = 20*np.ones(nr)
@@ -77,7 +83,7 @@ recs = np.vstack((rx, rz))
 dr = recs[0,1]-recs[0,0]
 
 # Sources
-ns = 60
+ns = 31
 sx = np.linspace(dx*25, (nx-25)*dx, ns)
 # sx = np.linspace(dx, (nx)*dx, ns)
 sz = 20*np.ones(ns)
@@ -147,31 +153,31 @@ plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
 plt.title('Delta')
 plt.ylim(z[-1], z[0])
 
-plt.figure(figsize=(10,5))
-im = plt.imshow(vx, cmap='jet',
-                extent = (x[0], x[-1], z[-1], z[0]))
-plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
-plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
-plt.colorbar(im)
-plt.axis('tight')
-plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
-plt.title('Velocity overlay with epsilon')
-plt.ylim(z[-1], z[0])
+# plt.figure(figsize=(10,5))
+# im = plt.imshow(vx, cmap='jet',
+#                 extent = (x[0], x[-1], z[-1], z[0]))
+# plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
+# plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
+# plt.colorbar(im)
+# plt.axis('tight')
+# plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
+# plt.title('Velocity overlay with epsilon')
+# plt.ylim(z[-1], z[0])
 
 
-plt.figure(figsize=(10,5))
-im = plt.imshow(eta, cmap='jet',
-                extent = (x[0], x[-1], z[-1], z[0]))
-plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
-plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
-plt.colorbar(im)
-plt.axis('tight')
-plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
-plt.title('eta')
-plt.ylim(z[-1], z[0])
+# plt.figure(figsize=(10,5))
+# im = plt.imshow(eta, cmap='jet',
+#                 extent = (x[0], x[-1], z[-1], z[0]))
+# plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
+# plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
+# plt.colorbar(im)
+# plt.axis('tight')
+# plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
+# plt.title('eta')
+# plt.ylim(z[-1], z[0])
 #%%
 
-TcompTotal = io.loadmat('TcompTotal_salt_31x31_375x750.mat')['TcompTotal']
+# TcompTotal = io.loadmat('TcompTotal_salt_31x31_375x750.mat')['TcompTotal']
 hby = 1;
 
 for hby in [1]:
@@ -311,6 +317,9 @@ for hby in [1]:
 
     print(f'---------------------------------------- \n')
 
+# Save the traveltime    
+io.savemat('TcompTotal_salt_60x60.mat',{'TcompTotal':TcompTotal})
+
 tcomp_t = np.zeros(((int(nx/hby))*(int(nz/hby)),len(sx)))
 for i in range(len(sx)):
     tcomp_new = (TcompTotal[:,i].reshape((int(nz/hby)),(int(nx/hby)))).T
@@ -321,18 +330,19 @@ trav_tcomp = tcomp_t.reshape((int(nz/hby)) * (int(nx/hby)), ns, 1) + \
        tcomp_t.reshape((int(nz/hby)) * (int(nx/hby)), 1, nr)
 trav_tcomp = trav_tcomp.reshape(ny * (int(nz/hby)) * (int(nx/hby)), ns * nr)
 
-#%% 
+#%%
 nt = 800
 dt = 0.004
 t = np.arange(nt)*dt
 
-# Generate the ricker wavelet
+wav, wavt, wavc = ricker(t[:41], f0=20)
+
+#%%  
+
 itrav_fs = (np.floor(trav_tcomp/dt)).astype(np.int32)
 travd_fs = (trav_tcomp/dt - itrav_fs)
 itrav_fs = itrav_fs.reshape(nx, nz, ns*nr)
 travd_fs = travd_fs.reshape(nx, nz, ns*nr)
-
-wav, wavt, wavc = ricker(t[:41], f0=20)
 
 #%% 
 Sop_fs = Spread(dims=(nx, nz), dimsd=(ns*nr, nt), table=itrav_fs, dtable=travd_fs, engine='numba')
