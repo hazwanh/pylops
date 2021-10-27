@@ -45,8 +45,8 @@ import math as mt
 
 #%% Generate the marmousi model and display
 
-# datapath = 'C:\\Users\\Azyan\\Documents\\pylops\\fast_sweeping\\bp_model\\bpmodel_salt_375x750_3750x6750.mat'
-datapath = '/home/hazwanh/Documents/Coding/python/pylops/fast_sweeping/bp_model/bpmodel_salt_375x750_3750x6750.mat'
+datapath = '/home/hazwanh/Documents/pylops/fast_sweeping/bp_model/bpmodel_salt_375x750_3750x6750.mat'
+# datapath = '/home/hazwanh/Documents/Coding/python/pylops/fast_sweeping/bp_model/bpmodel_salt_375x750_3750x6750.mat'
 vel_true = (io.loadmat(datapath)['model_vp1_int4']).T
 epsilon_true = (io.loadmat(datapath)['model_eps1_int4']).T
 delta_true = (io.loadmat(datapath)['model_del1_int4']).T
@@ -75,7 +75,7 @@ theta = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, theta_true, axis=0)
 theta = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, theta, axis=1)
 
 # Receivers
-nr = 31
+nr = 61
 rx = np.linspace(dx*25, (nx-25)*dx, nr)
 # rx = np.linspace(dx, (nx)*dx, nr)
 rz = 20*np.ones(nr)
@@ -83,14 +83,14 @@ recs = np.vstack((rx, rz))
 dr = recs[0,1]-recs[0,0]
 
 # Sources
-ns = 31
+ns = 61
 sx = np.linspace(dx*25, (nx-25)*dx, ns)
 # sx = np.linspace(dx, (nx)*dx, ns)
 sz = 20*np.ones(ns)
 sources = np.vstack((sx, sz))
 ds = sources[0,1]-sources[0,0]
 
-#%% Display the figure
+#%% Generate image for each model
 
 velmin = 1492
 velmax = np.abs(-1*vel_true).max()
@@ -175,7 +175,7 @@ plt.ylim(z[-1], z[0])
 # plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
 # plt.title('eta')
 # plt.ylim(z[-1], z[0])
-#%%
+#%% Calculate traveltime using fast-sweeping
 
 # TcompTotal = io.loadmat('TcompTotal_salt_31x31_375x750.mat')['TcompTotal']
 hby = 1;
@@ -330,21 +330,22 @@ trav_tcomp = tcomp_t.reshape((int(nz/hby)) * (int(nx/hby)), ns, 1) + \
        tcomp_t.reshape((int(nz/hby)) * (int(nx/hby)), 1, nr)
 trav_tcomp = trav_tcomp.reshape(ny * (int(nz/hby)) * (int(nx/hby)), ns * nr)
 
-#%%
+#%% Generate wavelet and other parameter
 nt = 800
 dt = 0.004
 t = np.arange(nt)*dt
 
 wav, wavt, wavc = ricker(t[:41], f0=20)
 
-#%%  
+#%% Calculate the traveltime table using fast sweeping
 
 itrav_fs = (np.floor(trav_tcomp/dt)).astype(np.int32)
 travd_fs = (trav_tcomp/dt - itrav_fs)
 itrav_fs = itrav_fs.reshape(nx, nz, ns*nr)
 travd_fs = travd_fs.reshape(nx, nz, ns*nr)
 
-#%% 
+
+#%% Generate lsm operator, data and madj for fast-sweeping
 Sop_fs = Spread(dims=(nx, nz), dimsd=(ns*nr, nt), table=itrav_fs, dtable=travd_fs, engine='numba')
 dottest(Sop_fs, ns*nr*nt, nx*nz)
 Cop_fs = Convolve1D(ns*nr*nt, h=wav, offset=wavc, dims=(ns*nr, nt), dir=1)
@@ -359,8 +360,8 @@ madj_fs = LSMop_fs.H * d_fs.ravel()
 madj_fs = madj_fs.reshape(nx, nz)
 
 
-#%% Computes the travel time using eikonal
-trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vx.T, mode='eikonal') 
+#%% Computes the travel time using pylops eikonal
+trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vel, mode='eikonal') 
 
 # Generate the ricker wavelet
 itrav_py = (np.floor(trav/dt)).astype(np.int32)
@@ -368,8 +369,7 @@ travd_py = (trav/dt - itrav_py)
 itrav_py = itrav_py.reshape(nx, nz, ns*nr)
 travd_py = travd_py.reshape(nx, nz, ns*nr)
 
-#%%
-
+#%% Generate lsm operator, data and madj for pylops
 Sop_py = Spread(dims=(nx, nz), dimsd=(ns*nr, nt), table=itrav_py, dtable=travd_py, engine='numba')
 dottest(Sop_py, ns*nr*nt, nx*nz)
 Cop_py = Convolve1D(ns*nr*nt, h=wav, offset=wavc, dims=(ns*nr, nt), dir=1)
@@ -384,14 +384,14 @@ madj_py = LSMop_py.H * d_py.ravel()
 madj_py = madj_py.reshape(nx, nz)
 
 
-#%%
+#%% Calculate the minv for fast-sweeping and pylops
 minv_py = LSMop_py.div(d_py.ravel(), niter=25)
 minv_py = minv_py.reshape(nx, nz)
 
 minv_fs = LSMop_fs.div(d_fs.ravel(), niter=25)
 minv_fs = minv_fs.reshape(nx, nz)
 
-#%%
+#%% Generate the image for madj
 rmin = -np.abs(madj_fs).max()
 rmax = np.abs(madj_fs).max()
 
@@ -409,7 +409,7 @@ plt.axis('tight')
 plt.xlabel('x [m]'),plt.ylabel('y [m]')
 plt.title('madj_fs')
 
-#%%
+#%% Generate the image for minv
 rmin = -np.abs(refl).max()
 rmax = np.abs(refl).max()
 
@@ -433,7 +433,7 @@ plt.colorbar(im)
 plt.axis('tight')
 plt.xlabel('x [m]'),plt.ylabel('y [m]')
 plt.title('minv_fs')
-#%%
+#%% Generate traveltime contour plot
 zmin = min(z); xmin = min(x);
 zmax = max(z); xmax = max(x); 
 
