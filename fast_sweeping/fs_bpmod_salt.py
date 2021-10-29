@@ -361,7 +361,7 @@ madj_fs = madj_fs.reshape(nx, nz)
 
 
 #%% Computes the travel time using pylops eikonal
-trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vel, mode='eikonal') 
+trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vx.T, mode='eikonal') 
 
 # Generate the ricker wavelet
 itrav_py = (np.floor(trav/dt)).astype(np.int32)
