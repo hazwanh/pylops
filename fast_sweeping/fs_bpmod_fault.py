@@ -45,11 +45,11 @@ import math as mt
 
 #%% Generate the marmousi model and display
 
-datapath = '/home/csi-13/Documents/pylops/fast_sweeping/bp_model/BP_model_crop_fault_375x749_9600x12596.mat'
+datapath = '/home/hazwanh/Documents/pylops/fast_sweeping/bp_model/bpmodel_fault_375x749_9600x12596.mat'
 vel_true = (io.loadmat(datapath)['model_vp3']).T
-epsilon = (io.loadmat(datapath)['model_eps3']).T
-delta = (io.loadmat(datapath)['model_del3']).T
-theta = (io.loadmat(datapath)['model_thet3']).T
+epsilon_true = (io.loadmat(datapath)['model_eps3']).T
+delta_true = (io.loadmat(datapath)['model_del3']).T
+theta_true = (io.loadmat(datapath)['model_thet3']).T
 x = io.loadmat(datapath)['x']
 z = io.loadmat(datapath)['z']
 
@@ -66,9 +66,15 @@ v0 = 1492 # initial velocity
 nsmooth=30
 vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel_true, axis=0)
 vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel, axis=1)
+epsilon = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, epsilon_true, axis=0)
+epsilon = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, epsilon, axis=1)
+delta = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, delta_true, axis=0)
+delta = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, delta, axis=1)
+theta = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, theta_true, axis=0)
+theta = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, theta, axis=1)
 
 # Receivers
-nr = 31
+nr = 60
 rx = np.linspace(dx*25, (nx-25)*dx, nr)
 # rx = np.linspace(dx, (nx)*dx, nr)
 rz = 20*np.ones(nr)
@@ -76,7 +82,7 @@ recs = np.vstack((rx, rz))
 dr = recs[0,1]-recs[0,0]
 
 # Sources
-ns = 31
+ns = 60
 sx = np.linspace(dx*25, (nx-25)*dx, ns)
 # sx = np.linspace(dx, (nx)*dx, ns)
 sz = 20*np.ones(ns)
@@ -88,7 +94,7 @@ ds = sources[0,1]-sources[0,0]
 velmin = 1492
 velmax = np.abs(-1*vel_true).max()
 
-plt.figure(figsize=(15,7))
+plt.figure(figsize=(10,5))
 im = plt.imshow(vel_true.T, cmap='jet', vmin = velmin, vmax = velmax,
                 extent = (x[0], x[-1], z[-1], z[0]))
 plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
@@ -125,7 +131,7 @@ plt.title('Reflectivity')
 plt.ylim(z[-1], z[0]);
 
 plt.figure(figsize=(10,5))
-im = plt.imshow(epsilon.T, cmap='jet',
+im = plt.imshow(epsilon_true.T, cmap='jet',
                 extent = (x[0], x[-1], z[-1], z[0]))
 plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
 plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
@@ -136,7 +142,7 @@ plt.title('Epsilon')
 plt.ylim(z[-1], z[0])
 
 plt.figure(figsize=(10,5))
-im = plt.imshow(delta.T, cmap='jet',
+im = plt.imshow(delta_true.T, cmap='jet',
                 extent = (x[0], x[-1], z[-1], z[0]))
 plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
 plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
@@ -306,6 +312,9 @@ for hby in [1]:
 
     print(f'---------------------------------------- \n')
 
+# # save the travel time    
+# io.savemat('TcompTotal_fault_60x60.mat',{'TcompTotal':TcompTotal})    
+
 tcomp_t = np.zeros(((int(nx/hby))*(int(nz/hby)),len(sx)))
 for i in range(len(sx)):
     tcomp_new = (TcompTotal[:,i].reshape((int(nz/hby)),(int(nx/hby)))).T
@@ -316,20 +325,21 @@ trav_tcomp = tcomp_t.reshape((int(nz/hby)) * (int(nx/hby)), ns, 1) + \
        tcomp_t.reshape((int(nz/hby)) * (int(nx/hby)), 1, nr)
 trav_tcomp = trav_tcomp.reshape(ny * (int(nz/hby)) * (int(nx/hby)), ns * nr)
 
-#%%
+#%% Generate wavelet and other parameter
 nt = 800
 dt = 0.004
 t = np.arange(nt)*dt
 
-# Generate the ricker wavelet
+wav, wavt, wavc = ricker(t[:41], f0=20)
+
+#%% Calculate the traveltime table using fast sweeping
+
 itrav_fs = (np.floor(trav_tcomp/dt)).astype(np.int32)
 travd_fs = (trav_tcomp/dt - itrav_fs)
 itrav_fs = itrav_fs.reshape(nx, nz, ns*nr)
 travd_fs = travd_fs.reshape(nx, nz, ns*nr)
 
-wav, wavt, wavc = ricker(t[:41], f0=20)
-
-#%% 
+#%% Generate lsm operator, data and madj for fast-sweeping
 Sop_fs = Spread(dims=(nx, nz), dimsd=(ns*nr, nt), table=itrav_fs, dtable=travd_fs, engine='numba')
 dottest(Sop_fs, ns*nr*nt, nx*nz)
 Cop_fs = Convolve1D(ns*nr*nt, h=wav, offset=wavc, dims=(ns*nr, nt), dir=1)
@@ -373,8 +383,11 @@ madj_py = madj_py.reshape(nx, nz)
 minv_py = LSMop_py.div(d_py.ravel(), niter=75)
 minv_py = minv_py.reshape(nx, nz)
 
-minv_fs = LSMop_fs.div(d_fs.ravel(), niter=75)
+minv_fs = LSMop_fs.div(d_fs.ravel(), niter=25)
 minv_fs = minv_fs.reshape(nx, nz)
+
+minv_fs_50 = LSMop_fs.div(d_fs.ravel(), niter=50)
+minv_fs_50 = minv_fs_50.reshape(nx, nz)
 
 #%%
 rmin = -np.abs(madj_fs).max()
@@ -423,7 +436,7 @@ zmin = min(z); xmin = min(x);
 zmax = max(z); xmax = max(x); 
 
 # Traveltime contour plots
-n =481
+n = 3599 # for 31:481, 60:1828 ((ns+1)*(ns/2))
 trav_1 = trav[:,n].reshape(int(nx/hby),int(nz/hby))
 trav_tcomp_1 = trav_tcomp[:,n].reshape(int(nx/hby),int(nz/hby))
 
@@ -444,7 +457,7 @@ ax.tick_params(axis='both', which='major', labelsize=8)
 # plt.gca().invert_yaxis()
 h1,_ = im2.legend_elements()
 h2,_ = im3.legend_elements()
-ax.legend([h1[0], h2[0]], ['pylops tt', 'fast-sweep tt'],fontsize=12)
+ax.legend([h1[0], h2[0]], ['pylops tt', 'fast-sweep tt'],fontsize=12,loc='lower right')
 
 # ax.xaxis.set_major_locator(plt.MultipleLocator(0.5))
 # ax.yaxis.set_major_locator(plt.MultipleLocator(0.5))

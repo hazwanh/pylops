@@ -75,7 +75,7 @@ theta = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, theta_true, axis=0)
 theta = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, theta, axis=1)
 
 # Receivers
-nr = 61
+nr = 60
 rx = np.linspace(dx*25, (nx-25)*dx, nr)
 # rx = np.linspace(dx, (nx)*dx, nr)
 rz = 20*np.ones(nr)
@@ -83,7 +83,7 @@ recs = np.vstack((rx, rz))
 dr = recs[0,1]-recs[0,0]
 
 # Sources
-ns = 61
+ns = 60
 sx = np.linspace(dx*25, (nx-25)*dx, ns)
 # sx = np.linspace(dx, (nx)*dx, ns)
 sz = 20*np.ones(ns)
@@ -132,7 +132,7 @@ plt.title('Reflectivity')
 plt.ylim(z[-1], z[0]);
 
 plt.figure(figsize=(10,5))
-im = plt.imshow(epsilon.T, cmap='jet',
+im = plt.imshow(epsilon_true.T, cmap='jet',
                 extent = (x[0], x[-1], z[-1], z[0]))
 plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
 plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
@@ -143,7 +143,7 @@ plt.title('Epsilon')
 plt.ylim(z[-1], z[0])
 
 plt.figure(figsize=(10,5))
-im = plt.imshow(delta.T, cmap='jet',
+im = plt.imshow(delta_true.T, cmap='jet',
                 extent = (x[0], x[-1], z[-1], z[0]))
 plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
 plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
@@ -153,30 +153,38 @@ plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
 plt.title('Delta')
 plt.ylim(z[-1], z[0])
 
-# plt.figure(figsize=(10,5))
-# im = plt.imshow(vx, cmap='jet',
-#                 extent = (x[0], x[-1], z[-1], z[0]))
-# plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
-# plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
-# plt.colorbar(im)
-# plt.axis('tight')
-# plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
-# plt.title('Velocity overlay with epsilon')
-# plt.ylim(z[-1], z[0])
+plt.figure(figsize=(10,5))
+im = plt.imshow(vx, cmap='jet',
+                extent = (x[0], x[-1], z[-1], z[0]))
+plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
+plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
+plt.title('Velocity overlay with epsilon')
+plt.ylim(z[-1], z[0])
 
 
-# plt.figure(figsize=(10,5))
-# im = plt.imshow(eta, cmap='jet',
-#                 extent = (x[0], x[-1], z[-1], z[0]))
-# plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
-# plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
-# plt.colorbar(im)
-# plt.axis('tight')
-# plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
-# plt.title('eta')
-# plt.ylim(z[-1], z[0])
+plt.figure(figsize=(10,5))
+im = plt.imshow(eta, cmap='jet',
+                extent = (x[0], x[-1], z[-1], z[0]))
+plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
+plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
+plt.colorbar(im)
+plt.axis('tight')
+plt.xlabel('offset [m]'),plt.ylabel('depth [m]')
+plt.title('eta')
+plt.ylim(z[-1], z[0])
 #%% Calculate traveltime using fast-sweeping
 
+"""
+hby = 1;
+vz = vel.T # 
+vx = vz*np.sqrt(1+2*epsilon.T)
+eta = (epsilon.T-delta.T)/(1+2*delta.T)
+theta =  theta.T
+"""
+    
 # TcompTotal = io.loadmat('TcompTotal_salt_31x31_375x750.mat')['TcompTotal']
 hby = 1;
 
@@ -318,7 +326,7 @@ for hby in [1]:
     print(f'---------------------------------------- \n')
 
 # Save the traveltime    
-io.savemat('TcompTotal_salt_60x60.mat',{'TcompTotal':TcompTotal})
+# io.savemat('TcompTotal_salt_60x60.mat',{'TcompTotal':TcompTotal})
 
 tcomp_t = np.zeros(((int(nx/hby))*(int(nz/hby)),len(sx)))
 for i in range(len(sx)):
@@ -359,6 +367,9 @@ d_fs = d_fs.reshape(ns, nr, nt)
 madj_fs = LSMop_fs.H * d_fs.ravel()
 madj_fs = madj_fs.reshape(nx, nz)
 
+madj_fs = io.loadmat('madj_minv_fs_salt.mat')['madj_fs']
+minv_fs_50 = io.loadmat('madj_minv_fs_salt.mat')['minv_fs_50']
+minv_fs_25 = io.loadmat('madj_minv_fs_salt.mat')['minv_fs_25']
 
 #%% Computes the travel time using pylops eikonal
 trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vx.T, mode='eikonal') 
@@ -383,6 +394,10 @@ d_py = d_py.reshape(ns, nr, nt)
 madj_py = LSMop_py.H * d_py.ravel()
 madj_py = madj_py.reshape(nx, nz)
 
+# d_py = io.loadmat('d_madj_minv_py_salt.mat')['d_py']
+# madj_py = io.loadmat('d_madj_minv_py_salt.mat')['madj_py']
+# minv_py_50 = io.loadmat('d_madj_minv_py_salt.mat')['minv_py_50']
+# minv_py_25 = io.loadmat('d_madj_minv_py_salt.mat')['minv_py_25']
 
 #%% Calculate the minv for fast-sweeping and pylops
 minv_py = LSMop_py.div(d_py.ravel(), niter=25)
@@ -394,6 +409,7 @@ minv_fs = minv_fs.reshape(nx, nz)
 #%% Generate the image for madj
 rmin = -np.abs(madj_fs).max()
 rmax = np.abs(madj_fs).max()
+# rmax = 750000000.00000; rmin = -750000000.00000;
 
 plt.figure(figsize=(10,5))
 im = plt.imshow(madj_py.T, cmap='gray',vmin=rmin, vmax=rmax)
@@ -412,6 +428,7 @@ plt.title('madj_fs')
 #%% Generate the image for minv
 rmin = -np.abs(refl).max()
 rmax = np.abs(refl).max()
+# rmin = -500; rmax = 500
 
 plt.figure(figsize=(10,5))
 im = plt.imshow(refl.T, cmap='gray', vmin=rmin, vmax=rmax)
@@ -438,7 +455,7 @@ zmin = min(z); xmin = min(x);
 zmax = max(z); xmax = max(x); 
 
 # Traveltime contour plots
-n = 960
+n = 1828 # for 31:481, 60:1828 ((ns+1)*(ns/2))
 trav_1 = trav[:,n].reshape(int(nx/hby),int(nz/hby))
 trav_tcomp_1 = trav_tcomp[:,n].reshape(int(nx/hby),int(nz/hby))
 
@@ -459,7 +476,7 @@ ax.tick_params(axis='both', which='major', labelsize=8)
 # plt.gca().invert_yaxis()
 h1,_ = im2.legend_elements()
 h2,_ = im3.legend_elements()
-ax.legend([h1[0], h2[0]], ['pylops tt', 'fast-sweep tt'],fontsize=12)
+ax.legend([h1[0], h2[0]], ['pylops tt', 'fast-sweep tt'],fontsize=12,loc='lower right')
 
 # ax.xaxis.set_major_locator(plt.MultipleLocator(0.5))
 # ax.yaxis.set_major_locator(plt.MultipleLocator(0.5))
@@ -470,6 +487,7 @@ plt.yticks(fontsize=10)
 #%% Generate shot gather
 rmin = -np.abs(d_fs).max()
 rmax = np.abs(d_fs).max()
+# rmax = 150000.00000; rmin = -150000.00000;
 
 fig, axs = plt.subplots(1, 3, figsize=(10, 6))
 axs[0].imshow(d_py[0, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
@@ -478,8 +496,8 @@ axs[0].axis('tight')
 axs[1].imshow(d_py[ns//2, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
 axs[1].set_title(f'$shot:{ns//2} $')
 axs[1].axis('tight')
-axs[2].imshow(d_py[30, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
-axs[2].set_title(f'$shot: 31$')
+axs[2].imshow(d_py[ns-1, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
+axs[2].set_title(f'$shot: {ns}$')
 axs[2].axis('tight')
 
 fig, axs = plt.subplots(1, 3, figsize=(10, 6))
@@ -489,6 +507,6 @@ axs[0].axis('tight')
 axs[1].imshow(d_fs[ns//2, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
 axs[1].set_title(f'$shot:{ns//2} $')
 axs[1].axis('tight')
-axs[2].imshow(d_fs[30, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
-axs[2].set_title(f'$shot: 31$')
+axs[2].imshow(d_fs[59, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
+axs[2].set_title(f'$shot: {ns}$')
 axs[2].axis('tight')

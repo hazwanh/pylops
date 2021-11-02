@@ -131,7 +131,7 @@ plt.title('Reflectivity')
 plt.ylim(z[-1], z[0]);
 
 plt.figure(figsize=(10,5))
-im = plt.imshow(epsilon.T, cmap='jet',
+im = plt.imshow(epsilon_true.T, cmap='jet',
                 extent = (x[0], x[-1], z[-1], z[0]))
 plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
 plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
@@ -142,7 +142,7 @@ plt.title('Epsilon')
 plt.ylim(z[-1], z[0])
 
 plt.figure(figsize=(10,5))
-im = plt.imshow(delta.T, cmap='jet',
+im = plt.imshow(delta_true.T, cmap='jet',
                 extent = (x[0], x[-1], z[-1], z[0]))
 plt.scatter(recs[0],  recs[1], marker='v', s=150, c='b', edgecolors='k')
 plt.scatter(sources[0], sources[1], marker='*', s=150, c='r', edgecolors='k')
