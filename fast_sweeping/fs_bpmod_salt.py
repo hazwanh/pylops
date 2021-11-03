@@ -455,7 +455,7 @@ zmin = min(z); xmin = min(x);
 zmax = max(z); xmax = max(x); 
 
 # Traveltime contour plots
-n = 1828 # for 31:481, 60:1828 ((ns+1)*(ns/2))
+n = 3599 # for 31:481, 60:1828 ((ns+1)*(ns/2))
 trav_1 = trav[:,n].reshape(int(nx/hby),int(nz/hby))
 trav_tcomp_1 = trav_tcomp[:,n].reshape(int(nx/hby),int(nz/hby))
 

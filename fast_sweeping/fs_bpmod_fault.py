@@ -353,6 +353,10 @@ d_fs = d_fs.reshape(ns, nr, nt)
 madj_fs = LSMop_fs.H * d_fs.ravel()
 madj_fs = madj_fs.reshape(nx, nz)
 
+d_fs = io.loadmat('d_madj_minv_fs_fault.mat')['d_fs']
+madj_fs = io.loadmat('d_madj_minv_fs_fault.mat')['madj_fs']
+minv_fs_50 = io.loadmat('d_madj_minv_fs_fault.mat')['minv_fs_50']
+minv_fs_25 = io.loadmat('d_madj_minv_fs_fault.mat')['minv_fs_25']
 
 #%% Computes the travel time using eikonal
 trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vx.T, mode='eikonal') 
@@ -363,7 +367,7 @@ travd_py = (trav/dt - itrav_py)
 itrav_py = itrav_py.reshape(nx, nz, ns*nr)
 travd_py = travd_py.reshape(nx, nz, ns*nr)
 
-#%%
+#%% Generate lsm operator, data and madj for pylops fault
 
 Sop_py = Spread(dims=(nx, nz), dimsd=(ns*nr, nt), table=itrav_py, dtable=travd_py, engine='numba')
 dottest(Sop_py, ns*nr*nt, nx*nz)
@@ -380,14 +384,11 @@ madj_py = madj_py.reshape(nx, nz)
 
 
 #%%
-minv_py = LSMop_py.div(d_py.ravel(), niter=75)
+minv_py = LSMop_py.div(d_py.ravel(), niter=25)
 minv_py = minv_py.reshape(nx, nz)
 
 minv_fs = LSMop_fs.div(d_fs.ravel(), niter=25)
 minv_fs = minv_fs.reshape(nx, nz)
-
-minv_fs_50 = LSMop_fs.div(d_fs.ravel(), niter=50)
-minv_fs_50 = minv_fs_50.reshape(nx, nz)
 
 #%%
 rmin = -np.abs(madj_fs).max()
@@ -476,6 +477,7 @@ plt.title('minv_fs')
 
 rmin = -np.abs(d_fs).max()
 rmax = np.abs(d_fs).max()
+# rmin = -100000; rmax = 100000
 
 fig, axs = plt.subplots(1, 3, figsize=(10, 6))
 axs[0].imshow(d_py[0, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
@@ -484,8 +486,8 @@ axs[0].axis('tight')
 axs[1].imshow(d_py[ns//2, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
 axs[1].set_title(f'$shot:{ns//2} $')
 axs[1].axis('tight')
-axs[2].imshow(d_py[30, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
-axs[2].set_title(f'$shot: 31$')
+axs[2].imshow(d_py[ns-1, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
+axs[2].set_title(f'$shot: {ns}$')
 axs[2].axis('tight')
 
 fig, axs = plt.subplots(1, 3, figsize=(10, 6))
@@ -495,6 +497,6 @@ axs[0].axis('tight')
 axs[1].imshow(d_fs[ns//2, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
 axs[1].set_title(f'$shot:{ns//2} $')
 axs[1].axis('tight')
-axs[2].imshow(d_fs[30, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
-axs[2].set_title(f'$shot: 31$')
+axs[2].imshow(d_fs[ns-1, :, :500].T, cmap='gray',vmin=rmin, vmax=rmax)
+axs[2].set_title(f'$shot: {ns}$')
 axs[2].axis('tight')
