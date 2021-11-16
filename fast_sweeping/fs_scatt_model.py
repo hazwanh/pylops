@@ -46,6 +46,7 @@ import math as mt
 #%% Generate the marmousi model and display
 
 datapath = '/home/hazwanh/Documents/pylops/fast_sweeping/bp_model/models.mat'
+datapath = '/home/hazwanh/Documents/Coding/python/pylops/fast_sweeping/bp_model/models.mat'
 vel_true = (io.loadmat(datapath)['vp']).T
 epsilon_true = (io.loadmat(datapath)['epsilon']).T
 delta_true = (io.loadmat(datapath)['delta']).T
@@ -339,7 +340,7 @@ trav_tcomp = tcomp_t.reshape((int(nz/hby)) * (int(nx/hby)), ns, 1) + \
 trav_tcomp = trav_tcomp.reshape(ny * (int(nz/hby)) * (int(nx/hby)), ns * nr)
 
 #%% Generate wavelet and other parameter
-nt = 650
+nt = 1154
 dt = 0.004
 t = np.arange(nt)*dt
 
@@ -372,7 +373,7 @@ madj_fs = madj_fs.reshape(nx, nz)
 # minv_fs_25 = io.loadmat('d_madj_minv_fs_fault.mat')['minv_fs_25']
 
 #%% Computes the travel time using eikonal
-trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vz.T, mode='eikonal') 
+trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vel, mode='eikonal') 
 
 # Generate the ricker wavelet
 itrav_py = (np.floor(trav/dt)).astype(np.int32)
@@ -402,3 +403,37 @@ minv_py = minv_py.reshape(nx, nz)
 
 minv_fs = LSMop_fs.div(d_fs.ravel(), niter=25)
 minv_fs = minv_fs.reshape(nx, nz)
+
+#%%
+zmin = min(z); xmin = min(x);
+zmax = max(z); xmax = max(x); 
+
+# Traveltime contour plots
+n = 0 # for 31:481, 60:1828 ((ns+1)*(ns/2))
+trav_1 = trav[:,n].reshape(int(nx/hby),int(nz/hby))
+trav_tcomp_1 = trav_tcomp[:,n].reshape(int(nx/hby),int(nz/hby))
+
+plt.figure(figsize=(10,5))
+
+ax = plt.gca()
+im1 = ax.imshow(vx,extent = (x[0], x[-1], z[-1], z[0]), aspect=1, cmap="jet")
+im2 = ax.contour(trav_1.T, 10, extent = [xmin,xmax,zmin,zmax], colors='g',linestyles = 'dashed')
+im3 = ax.contour(trav_tcomp_1.T, 10, extent=[xmin,xmax,zmin,zmax], colors='r',linestyles = 'dashed')
+
+ax.plot(sx,sz,'r*',markersize=8)
+
+plt.xlabel('Offset (km)', fontsize=14)
+plt.ylabel('Depth (km)', fontsize=14)
+plt.title('Traveltime contour plot',fontsize=14)
+plt.colorbar(im1)
+ax.tick_params(axis='both', which='major', labelsize=8)
+# plt.gca().invert_yaxis()
+h1,_ = im2.legend_elements()
+h2,_ = im3.legend_elements()
+ax.legend([h1[0], h2[0]], ['pylops tt', 'fast-sweep tt'],fontsize=12,loc='lower right')
+
+# ax.xaxis.set_major_locator(plt.MultipleLocator(0.5))
+# ax.yaxis.set_major_locator(plt.MultipleLocator(0.5))
+
+plt.xticks(fontsize=10)
+plt.yticks(fontsize=10)

@@ -46,6 +46,7 @@ import math as mt
 #%% Generate the marmousi model and display
 
 datapath = '/home/hazwanh/Documents/pylops/fast_sweeping/bp_model/bpmodel_fault_375x749_9600x12596.mat'
+# datapath = '/home/hazwanh/Documents/Coding/python/pylops/fast_sweeping/bp_model/bpmodel_fault_375x749_9600x12596.mat'
 vel_true = (io.loadmat(datapath)['model_vp3']).T
 epsilon_true = (io.loadmat(datapath)['model_eps3']).T
 delta_true = (io.loadmat(datapath)['model_del3']).T
