@@ -45,8 +45,13 @@ import math as mt
 
 #%% Generate the marmousi model and display
 
+<<<<<<< HEAD
 # datapath = '/home/hazwanh/Documents/pylops/fast_sweeping/bp_model/models.mat'
 datapath = '/home/hazwanh/Documents/Coding/python/pylops/fast_sweeping/bp_model/models.mat'
+=======
+datapath = '/home/hazwanh/Documents/pylops/fast_sweeping/bp_model/models.mat'
+# datapath = '/home/hazwanh/Documents/Coding/python/pylops/fast_sweeping/bp_model/models.mat'
+>>>>>>> 1be47b2f58d898aeb04887d0dc6375126920b8bc
 vel_true = (io.loadmat(datapath)['vp']).T
 epsilon_true = (io.loadmat(datapath)['epsilon']).T
 delta_true = (io.loadmat(datapath)['delta']).T
@@ -65,7 +70,11 @@ refl = np.hstack([refl, np.zeros((nx, 1))])
 
 # Smooth velocity
 v0 = 1800 # initial velocity
+<<<<<<< HEAD
 nsmooth=30
+=======
+nsmooth=2
+>>>>>>> 1be47b2f58d898aeb04887d0dc6375126920b8bc
 vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel_true, axis=0)
 vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel, axis=1)
 
@@ -332,9 +341,13 @@ madj_fs = madj_fs.reshape(nx, nz)
 # minv_fs_25 = io.loadmat('d_madj_minv_fs_fault.mat')['minv_fs_25']
 
 #%% Computes the travel time using eikonal
+<<<<<<< HEAD
 epsilon_fake = np.zeros((100,100))
 vx2 = vel_true.T*np.sqrt(1+2*epsilon_fake.T)
 trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vx2.T, mode='eikonal') 
+=======
+trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vx.T, mode='eikonal') 
+>>>>>>> 1be47b2f58d898aeb04887d0dc6375126920b8bc
 
 # Generate the ricker wavelet
 itrav_py = (np.floor(trav/dt)).astype(np.int32)
