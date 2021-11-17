@@ -46,7 +46,7 @@ import math as mt
 #%% Generate the marmousi model and display
 
 datapath = '/home/hazwanh/Documents/pylops/fast_sweeping/bp_model/models.mat'
-datapath = '/home/hazwanh/Documents/Coding/python/pylops/fast_sweeping/bp_model/models.mat'
+# datapath = '/home/hazwanh/Documents/Coding/python/pylops/fast_sweeping/bp_model/models.mat'
 vel_true = (io.loadmat(datapath)['vp']).T
 epsilon_true = (io.loadmat(datapath)['epsilon']).T
 delta_true = (io.loadmat(datapath)['delta']).T
@@ -63,8 +63,8 @@ refl = np.diff(vel_true, axis=1)
 refl = np.hstack([refl, np.zeros((nx, 1))])
 
 # Smooth velocity
-v0 = 1492 # initial velocity
-nsmooth=30
+v0 = 1800 # initial velocity
+nsmooth=2
 vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel_true, axis=0)
 vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel, axis=1)
 # epsilon = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, epsilon_true, axis=0)
@@ -75,7 +75,7 @@ vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel, axis=1)
 # theta = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, theta, axis=1)
 
 # Receivers
-nr = 25
+nr = 3
 # rx = np.linspace(dx*25, (nx-25)*dx, nr)
 rx = np.linspace(dx, nx-dx, nr)
 rz = 5*np.ones(nr)
@@ -83,7 +83,7 @@ recs = np.vstack((rx, rz))
 dr = recs[0,1]-recs[0,0]
 
 # Sources
-ns = 25
+ns = 3
 # sx = np.linspace(dx*25, (nx-25)*dx, ns)
 sx = np.linspace(dx, nx-dx, ns)
 sz = 5*np.ones(ns)
@@ -373,7 +373,7 @@ madj_fs = madj_fs.reshape(nx, nz)
 # minv_fs_25 = io.loadmat('d_madj_minv_fs_fault.mat')['minv_fs_25']
 
 #%% Computes the travel time using eikonal
-trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vel, mode='eikonal') 
+trav, trav_srcs, trav_recs = _traveltime_table(z, x, sources, recs, vx.T, mode='eikonal') 
 
 # Generate the ricker wavelet
 itrav_py = (np.floor(trav/dt)).astype(np.int32)
