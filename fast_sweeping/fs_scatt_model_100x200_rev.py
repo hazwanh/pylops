@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Created on Thu Nov 18 13:35:26 2021
+
+@author: hazwanh
+"""
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
 Created on Tue Nov 16 11:27:37 2021
 
 @author: hazwanh
@@ -48,24 +56,29 @@ import math as mt
 datapath = '/home/hazwanh/Documents/pylops/fast_sweeping/bp_model/model_scattered_100x200.mat'
 # datapath = '/home/hazwanh/Documents/Coding/python/pylops/fast_sweeping/bp_model/models.mat'
 vel_true = (io.loadmat(datapath)['vp']).T
-epsilon_true = (io.loadmat(datapath)['epsilon']).T
-delta_true = (io.loadmat(datapath)['delta']).T
-theta_true = (io.loadmat(datapath)['theta']).T
-eta_true = (io.loadmat(datapath)['eta']).T
+# epsilon_true = (io.loadmat(datapath)['epsilon']).T
+# delta_true = (io.loadmat(datapath)['delta']).T
+# theta_true = (io.loadmat(datapath)['theta']).T
+# eta_true = (io.loadmat(datapath)['eta']).T
 x = np.arange(0,vel_true.shape[0])
 z = np.arange(0,vel_true.shape[1])
+
+epsilon_true = np.zeros((200,100))
+delta_true = np.zeros((200,100))
+theta_true = np.zeros((200,100))
+eta_true = np.zeros((200,100))
 
 # x = np.arange(0,np.max(x)-np.min(x)+4,4)
 # z = np.arange(0,np.max(z)-np.min(z)+4,4)
 nx, nz = len(x), len(z)
 dx, dz = 4, 4
 
-refl = np.diff(vel_true, axis=1)
+refl = np.diff(vel_true, axis=1)/1000
 refl = np.hstack([refl, np.zeros((nx, 1))])
 
 # Smooth velocity
 v0 = 1800 # initial velocity
-nsmooth=30
+nsmooth=15
 
 vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel_true, axis=0)
 vel = filtfilt(np.ones(nsmooth)/float(nsmooth), 1, vel, axis=1)
