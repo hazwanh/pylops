@@ -45,7 +45,7 @@ import math as mt
 
 #%% Generate the marmousi model and display
 
-datapath = '/home/hazwanh/Documents/pylops/fast_sweeping/bp_model/model_scattered_100x200.mat'
+datapath = '/home/hazwanh/Documents/pylops/fast_sweeping/bp_model/models.mat'
 # datapath = '/home/hazwanh/Documents/Coding/python/pylops/fast_sweeping/bp_model/models.mat'
 vel_true = (io.loadmat(datapath)['vp']).T
 epsilon_true = (io.loadmat(datapath)['epsilon']).T
@@ -300,7 +300,7 @@ trav_tcomp = tcomp_t.reshape((int(nz)) * (int(nx)), ns, 1) + \
 trav_tcomp = trav_tcomp.reshape(ny * (int(nz)) * (int(nx)), ns * nr)
 
 #%% Generate wavelet and other parameter
-nt = 1800
+nt = 650
 dt = 0.004
 t = np.arange(nt)*dt
 

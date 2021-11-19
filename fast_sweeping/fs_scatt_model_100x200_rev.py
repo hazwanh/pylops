@@ -56,24 +56,24 @@ import math as mt
 datapath = '/home/hazwanh/Documents/pylops/fast_sweeping/bp_model/model_scattered_100x200.mat'
 # datapath = '/home/hazwanh/Documents/Coding/python/pylops/fast_sweeping/bp_model/models.mat'
 vel_true = (io.loadmat(datapath)['vp']).T
-# epsilon_true = (io.loadmat(datapath)['epsilon']).T
-# delta_true = (io.loadmat(datapath)['delta']).T
-# theta_true = (io.loadmat(datapath)['theta']).T
-# eta_true = (io.loadmat(datapath)['eta']).T
+epsilon_true = (io.loadmat(datapath)['epsilon']).T
+delta_true = (io.loadmat(datapath)['delta']).T
+theta_true = (io.loadmat(datapath)['theta']).T
+eta_true = (io.loadmat(datapath)['eta']).T
 x = np.arange(0,vel_true.shape[0])
 z = np.arange(0,vel_true.shape[1])
 
-epsilon_true = np.zeros((200,100))
-delta_true = np.zeros((200,100))
-theta_true = np.zeros((200,100))
-eta_true = np.zeros((200,100))
+# epsilon_true = np.zeros((200,100))
+# delta_true = np.zeros((200,100))
+# theta_true = np.zeros((200,100))
+# eta_true = np.zeros((200,100))
 
 # x = np.arange(0,np.max(x)-np.min(x)+4,4)
 # z = np.arange(0,np.max(z)-np.min(z)+4,4)
 nx, nz = len(x), len(z)
 dx, dz = 4, 4
 
-refl = np.diff(vel_true, axis=1)/1000
+refl = np.diff(vel_true, axis=1)
 refl = np.hstack([refl, np.zeros((nx, 1))])
 
 # Smooth velocity
@@ -313,12 +313,11 @@ trav_tcomp = tcomp_t.reshape((int(nz)) * (int(nx)), ns, 1) + \
 trav_tcomp = trav_tcomp.reshape(ny * (int(nz)) * (int(nx)), ns * nr)
 
 #%% Generate wavelet and other parameter
-nt = 1800
+nt = 1175
 dt = 0.004
 t = np.arange(nt)*dt
 
 wav, wavt, wavc = ricker(t[:41], f0=20)
-
 #%% Calculate the traveltime table using fast sweeping
 
 itrav_fs = (np.floor(trav_tcomp/dt)).astype(np.int32)
@@ -356,7 +355,7 @@ travd_py = (trav/dt - itrav_py)
 itrav_py = itrav_py.reshape(nx, nz, ns*nr)
 travd_py = travd_py.reshape(nx, nz, ns*nr)
 
-#%% Generate lsm operator, data and madj for pylops fault
+#%% Generate lsm operator, data and madj for pylops
 
 Sop_py = Spread(dims=(nx, nz), dimsd=(ns*nr, nt), table=itrav_py, dtable=travd_py, engine='numba')
 dottest(Sop_py, ns*nr*nt, nx*nz)
@@ -373,8 +372,8 @@ madj_py = madj_py.reshape(nx, nz)
 
 #%% Display the madj
 
-rmin = -np.abs(madj_py).max()
-rmax = np.abs(madj_py).max()
+rmin = -np.abs(madj_fs).max()
+rmax = np.abs(madj_fs).max()
 
 plt.figure(figsize=(10,5))
 im = plt.imshow(madj_py.T, cmap='gray',vmin=rmin, vmax=rmax)
@@ -402,7 +401,7 @@ zmin = min(z); xmin = min(x);
 zmax = max(z); xmax = max(x); 
 
 # Traveltime contour plots
-n = 0 # for 31:481, 60:1828 ((ns+1)*(ns/2))
+n =624 # for 31:481, 60:1828 ((ns+1)*(ns/2))
 trav_1 = trav[:,n].reshape(int(nx),int(nz))
 trav_tcomp_1 = trav_tcomp[:,n].reshape(int(nx),int(nz))
 
